@@ -1,12 +1,11 @@
+import { commercialTotals } from "@/services/business-views";
 import { FileText, ArrowUpRight } from "lucide-react";
 import type { Workspace, CompanyId } from "@/domain/models";
 import { activeProject } from "@/presentation/hierarchy";
-import { sampleRevenue } from "@/data/executive-metrics";
-import { performance, money } from "@/presentation/performance";
+import { money } from "@/presentation/performance";
 export function ExecutiveBrief({
   data,
   company,
-  node,
   navigate,
 }: {
   data: Workspace;
@@ -23,13 +22,14 @@ export function ExecutiveBrief({
   const riskIds = new Set(data.risks.map((r) => r.project));
   riskProjects.forEach((id) => riskIds.add(id));
   const risk = riskIds.size;
-  const sample = data.metadata?.dataset !== "live";
-  const report = performance(
-    sample ? sampleRevenue : [],
-    "Year",
-    company,
-    node,
+  const commercial = (data.sourceRecords ?? []).filter(
+    (r) => r.kind === "commercial" && company !== "originals",
   );
+  const source = commercial[0]?.sheet;
+  const rows = commercial.filter((r) => r.sheet === source);
+  const totals = commercialTotals(rows);
+  const forecast =
+    rows.length > totals.revenueMissing ? totals.revenue : undefined;
   const active = data.projects.filter(activeProject).length;
   return (
     <section className="executive-brief executive-card">
@@ -54,11 +54,13 @@ export function ExecutiveBrief({
       </div>
       <div className="executive-kpis">
         <button onClick={() => navigate("Pipeline")}>
-          <strong>
-            {report.total === undefined ? "—" : money(report.total)}
-          </strong>
-          <span>{company ? "Company revenue" : "Group revenue"}</span>
-          <small>{sample ? "Illustrative · YTD" : "Not reported"}</small>
+          <strong>{forecast === undefined ? "—" : money(forecast)}</strong>
+          <span>Expected revenue · pipeline</span>
+          <small>
+            {forecast === undefined
+              ? "Not reported"
+              : "Source basis · not recognized revenue"}
+          </small>
         </button>
         <button onClick={() => navigate("Projects")}>
           <strong>{active}</strong>

@@ -23,6 +23,7 @@ import {
   Project,
   Meeting,
 } from "@/domain/models";
+import { removeDemo } from "@/presentation/remove-demo";
 import { mockWorkspace } from "@/data/mock";
 import {
   processInbox,
@@ -87,7 +88,7 @@ export function CommandCenter({
   email?: string;
   onSignOut?: () => void;
 }) {
-  const [data, setData] = useState<Workspace>(mockWorkspace);
+  const [data, setData] = useState<Workspace>(() => removeDemo(mockWorkspace));
   const [ready, setReady] = useState(false);
   const [loadError, setLoadError] = useState("");
   const [saveError, setSaveError] = useState("");
@@ -111,14 +112,16 @@ export function CommandCenter({
   const [mobile, setMobile] = useState(false);
   const [toast, setToast] = useState("");
   const [delegation, setDelegation] = useState<string>();
-  const [owner, setOwner] = useState("Iyas");
+  const [owner, setOwner] = useState("");
   const [description, setDescription] = useState("");
   const [resetConfirm, setResetConfirm] = useState(false);
   useEffect(() => {
     let active = true;
     service
       .load()
-      .then((d) => {
+      .then(async (loaded) => {
+        const d = removeDemo(loaded);
+        if (JSON.stringify(d) !== JSON.stringify(loaded)) await service.save(d);
         if (!active) return;
         setData(d);
         setReady(true);
@@ -232,7 +235,7 @@ export function CommandCenter({
       return;
     }
     setDelegation(id);
-    setOwner(data.people.some((p) => p.name === id) ? id : "Iyas");
+    setOwner(data.people.some((p) => p.name === id) ? id : "");
     setDescription("");
   };
   const saveDelegation = () => {
@@ -530,7 +533,7 @@ export function CommandCenter({
           <button
             className="primary-button"
             onClick={() => {
-              update(structuredClone(mockWorkspace), "Sample data restored");
+              update(removeDemo(mockWorkspace), "Empty workspace restored");
               setResetConfirm(false);
             }}
           >

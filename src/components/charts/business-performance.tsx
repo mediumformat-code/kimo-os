@@ -1,4 +1,5 @@
 "use client";
+import { SourceFinance } from "./source-finance";
 import { useState } from "react";
 import {
   Area,
@@ -44,6 +45,7 @@ export function BusinessPerformance({
     company,
     node,
   );
+  if (!sample) return <SourceFinance data={data} company={company} />;
   return (
     <div className="performance-grid">
       <section

@@ -95,3 +95,25 @@ test("reviewed Plaud capture adds source and actions without replacing Sheets st
     /sudah diimpor/,
   );
 });
+
+import { removeDemo } from "../src/presentation/remove-demo";
+test("seed cleanup removes simulated records while retaining imported projects and sync metadata", () => {
+  const raw = structuredClone(mockWorkspace);
+  const real = {
+    ...raw.projects[0],
+    id: "sheet-row-real",
+    name: "Actual source project",
+  };
+  raw.projects.push(real);
+  raw.metadata = { dataset: "live" };
+  const cleaned = removeDemo(raw);
+  assert.deepEqual(
+    cleaned.projects.map((p) => p.id),
+    ["sheet-row-real"],
+  );
+  assert.equal(cleaned.actions.length, 0);
+  assert.equal(cleaned.meetings.length, 0);
+  assert.equal(cleaned.people.length, 0);
+  assert.equal(raw.projects.length, mockWorkspace.projects.length + 1);
+  assert.deepEqual(removeDemo(cleaned), cleaned);
+});

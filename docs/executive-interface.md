@@ -11,3 +11,5 @@ Plaud and GPT Projects have an additive capture workflow in Sources. TXT/MD tran
 Protected Google services, APIs, configuration, scheduler, transformation, mappings, authentication, source IDs and migrations were not edited. DDO remains read-only for progress monitoring. Existing live synchronization continues while the OS is open.
 
 Next milestone: obtain official Plaud integration capabilities and configure GPT access; design incremental background capture with stable external IDs and explicit write-back rules. Do not claim connection before account authorization and an end-to-end live test.
+
+Seeded demonstration records are now removed by their original IDs and project identity on workspace load; the cleaned workspace is persisted with existing revision checks. Fresh workspaces contain no seeded projects or people. The executive financial panels read commercial source records (one source tab at a time to avoid adding duplicate copies), explicitly label expected revenue as pipeline, and leave recognized revenue unreported. Pipeline status and project health charts use real source/workspace records.

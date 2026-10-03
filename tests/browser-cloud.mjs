@@ -1,6 +1,7 @@
 import { chromium } from "@playwright/test";
 import { build } from "esbuild";
 import fs from "node:fs";
+import { execFileSync } from "node:child_process";
 import assert from "node:assert/strict";
 const built = await build({
   stdin: {
@@ -53,7 +54,20 @@ const browser = await chromium.launch({
   executablePath: process.env.CHROMIUM_PATH || "/usr/bin/chromium",
   args: ["--no-sandbox"],
 });
-let row = null;
+const fixture = JSON.parse(
+  execFileSync(
+    process.execPath,
+    [
+      "--import",
+      "tsx",
+      "--input-type=module",
+      "-e",
+      `import {mockWorkspace} from './src/data/mock.ts'; const ids=new Set(['projects','people','actions','decisions','meetings','commitments','risks','inbox'].flatMap(k=>mockWorkspace[k].map(r=>r.id))); const transform=v=> typeof v==='string' ? ids.has(v) ? 'real-'+v : v : Array.isArray(v) ? v.map(transform) : v && typeof v==='object' ? Object.fromEntries(Object.entries(v).map(([k,x])=>[k,transform(x)])) : v; const data=transform(mockWorkspace); data.metadata={dataset:'live'}; console.log(JSON.stringify(data));`,
+    ],
+    { encoding: "utf8" },
+  ),
+);
+let row = { data: fixture, revision: 0 };
 let otpBody;
 let offline = false;
 let errors = [];
@@ -233,7 +247,7 @@ try {
   offline = true;
   await one
     .getByRole("button", {
-      name: "Complete Unblock the The Others venue lease",
+      name: "Complete Unblock the COMMONS venue lease",
       exact: true,
     })
     .click();

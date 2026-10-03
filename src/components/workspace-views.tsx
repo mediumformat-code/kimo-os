@@ -517,7 +517,7 @@ export function WorkspaceViews({
           </div>
           <div className="search-suggestions">
             {[
-              "What am I waiting from Iyas?",
+              "What commitments need follow-up?",
               "What needs my approval?",
               "Show all overdue commitments",
               "What’s happening with Medium Format?",

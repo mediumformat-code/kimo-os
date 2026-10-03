@@ -1,3 +1,4 @@
+import { removeDemo } from "./remove-demo";
 import type { CompanyId, Project, Workspace } from "@/domain/models";
 import type {
   BusinessUnit,
@@ -108,24 +109,10 @@ export function nodeMatches(p: Project, node?: string) {
 }
 // Presentation projection only. Never pass it to workspace persistence or sync.
 export function executiveWorkspace(raw: Workspace): Workspace {
-  const sample = raw.metadata?.dataset !== "live";
-  const data: Workspace = sample
-    ? JSON.parse(JSON.stringify(raw).replaceAll("COMMONS", "The Others"))
-    : structuredClone(raw);
-  const aliases: Record<string, { name: string; company: CompanyId }> = {
-    amild: { name: "Camponaria", company: "originals" },
-    byu: { name: "FAM · Distribution", company: "originals" },
-    commons: { name: "The Others", company: "originals" },
-    frekuensi: { name: "Frekuensi Antara Music", company: "originals" },
-    music: { name: "FAM · Artist investment", company: "originals" },
-  };
+  const data = removeDemo(raw);
   data.projects = data.projects
-    .filter((p) => sample || !excludedAccount(p.name))
-    .map((p) => {
-      const a = sample ? aliases[p.id] : undefined;
-      const candidate = { ...p, ...a };
-      return { ...candidate, company: placement(candidate).company };
-    });
+    .filter((p) => !excludedAccount(p.name))
+    .map((p) => ({ ...p, company: placement(p).company }));
   data.companies = companies.map((c) => ({
     id: c.id,
     name: c.name,
