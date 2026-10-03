@@ -22,21 +22,6 @@ export function normalizeSourceDate(text: string): string {
     ? iso
     : v;
 }
-export function liveSourceId(sheet: SourceSheet, row: number): string {
-  const h =
-    sheet.rows.find((r) =>
-      r.some((c) =>
-        /^(task title|project name|commercial pic)$/i.test(c.trim()),
-      ),
-    ) ?? [];
-  const key = h.findIndex((c) => c.trim() === "KIMO Row Key");
-  const value = key < 0 ? "" : sheet.rows[row][key]?.trim();
-  if (!value)
-    throw new Error(
-      `${sheet.title}: row ${row + 1} belum memiliki KIMO Row Key. Jalankan Refine source sheets dulu.`,
-    );
-  return `${sheet.id}:key:${value}`;
-}
 export function prepareLiveBusiness(sheets: SourceSheet[]): Workspace {
   const incoming = prepareBusinessSheets(sheets);
   if (

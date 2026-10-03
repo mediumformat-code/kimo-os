@@ -189,3 +189,43 @@ test("a failed backup copy never reaches source updates", async () => {
     global.fetch = old;
   }
 });
+
+test("DDO monitoring works without row keys and survives progress edits and row sorting", () => {
+  const s = task([header.slice(0, -1), a.slice(0, -1), b.slice(0, -1)]);
+  s.readOnly = true;
+  assert.equal(refinementPlan([s]).patches.length, 0);
+  const first = prepareBusinessSheets([s]);
+  const reordered = structuredClone(s);
+  reordered.rows = [s.rows[0], [...s.rows[2]], [...s.rows[1]]];
+  reordered.rows[2][4] = "Completed";
+  const second = prepareBusinessSheets([reordered]);
+  assert.deepEqual(
+    first.actions.map((a) => a.id).sort(),
+    second.actions.map((a) => a.id).sort(),
+  );
+  assert.equal(
+    second.actions.find((a) => a.description === "One")?.status,
+    "Done",
+  );
+  assert.equal(first.actions.length, 2);
+});
+test("stale refinement plans cannot write a DDO read-only source", async () => {
+  const s = task([header.slice(0, -1), a.slice(0, -1)]);
+  const oldPlan = refinementPlan([s]);
+  s.readOnly = true;
+  const old = global.fetch;
+  let called = false;
+  global.fetch = async () => {
+    called = true;
+    throw Error("unexpected network");
+  };
+  try {
+    await assert.rejects(
+      () => applyRefinements("test", [s], oldPlan),
+      /monitoring saja/,
+    );
+    assert.equal(called, false);
+  } finally {
+    global.fetch = old;
+  }
+});

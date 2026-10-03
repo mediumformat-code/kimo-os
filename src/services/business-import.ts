@@ -6,6 +6,7 @@ export interface SourceSheet {
   title: string;
   rows: string[][];
   live?: boolean;
+  readOnly?: boolean;
 }
 export interface SourceRecord {
   id: string;
@@ -97,6 +98,7 @@ export function prepareBusinessSheets(sheets: SourceSheet[]): Workspace {
       )
     )
       continue;
+    const readOnlyOccurrences = new Map<string, number>();
     for (let row = h + 1; row < sheet.rows.length; row++) {
       const r = sheet.rows[row];
       const title = get(
@@ -112,7 +114,19 @@ export function prepareBusinessSheets(sheets: SourceSheet[]): Workspace {
       headers.forEach((c, j) => {
         if (r[j]) fields[`${j + 1}. ${c.trim() || "Column"}`] = r[j];
       });
-      const stable = get(r, "kimo row key");
+      let stable = get(r, "kimo row key");
+      if (sheet.live && sheet.readOnly && !stable) {
+        // No source writes: distinguish native duplicate IDs using task identity,
+        // excluding mutable progress/PIC/date fields so edits keep the same ID.
+        const identity = JSON.stringify([
+          get(r, "id"),
+          get(r, "workspace"),
+          title,
+        ]);
+        const occurrence = (readOnlyOccurrences.get(identity) ?? 0) + 1;
+        readOnlyOccurrences.set(identity, occurrence);
+        stable = `read-only-${encodeURIComponent(identity)}-${occurrence}`;
+      }
       if (sheet.live && !stable)
         throw new Error(
           `${sheet.title}: row ${row + 1} belum memiliki KIMO Row Key.`,

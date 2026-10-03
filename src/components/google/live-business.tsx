@@ -53,17 +53,18 @@ export function LiveBusiness({
     <section className="panel detail-card">
       <h2>Live Google Sheets — DDO / DDS</h2>
       <p>
-        Tiga Google Sheets menjadi sumber utama. Formula diperiksa dan
-        diperbaiki sebelum aktivasi; XLSX tidak diperlukan. Tab log, salinan dan
-        ringkasan tidak menjadi proyek. Sheet sumber mengendalikan status task;
-        perubahan OS tidak ditulis balik ke Sheets.
+        Tiga Google Sheets menjadi sumber utama. DDO hanya dibaca untuk memantau
+        progres; formula, validasi dan isi DDO tidak diubah. Perapihan sebelum
+        aktivasi hanya berlaku untuk DDS; XLSX tidak diperlukan. Tab log,
+        salinan dan ringkasan tidak menjadi proyek. Sheet sumber mengendalikan
+        status task; perubahan OS tidak ditulis balik ke Sheets.
       </p>
       <p>
         {data.businessSync?.enabled
           ? `Active · last update ${new Date(data.businessSync.lastSyncedAt).toLocaleString("id-ID", { timeZone: "Asia/Jakarta" })}`
           : "Belum aktif"}{" "}
-        · auto-check setiap 5 menit selama OS terbuka. Baris baru diberi KIMO
-        Row Key setelah backup; perubahan formula lain perlu review ulang.
+        · auto-check setiap 5 menit selama OS terbuka. Baris baru DDS diberi KIMO
+        Row Key setelah backup; perubahan formula DDS lain perlu review ulang.
       </p>
       <div className="account-actions">
         <button

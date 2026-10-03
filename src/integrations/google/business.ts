@@ -79,6 +79,7 @@ export async function readLiveSheets(token: string): Promise<LiveSheet[]> {
           title: s.properties.title,
           rows,
           live: true,
+          readOnly: source.name === "DDO dashboard",
           spreadsheetId: source.id,
           sheetId: s.properties.sheetId,
           columnCount: s.properties.gridProperties.columnCount,
@@ -101,7 +102,13 @@ export function sourceHash(sheets: LiveSheet[]) {
 // when checking for edits during backup (NOW/TODAY must not invalidate a backup).
 export function sourceInputHash(sheets: LiveSheet[]) {
   return createHash("sha256")
-    .update(JSON.stringify(sheets.map((s) => [s.id, s.title, s.formulas])))
+    .update(
+      JSON.stringify(
+        sheets
+          .filter((s) => !s.readOnly)
+          .map((s) => [s.id, s.title, s.formulas]),
+      ),
+    )
     .digest("hex");
 }
 export function refinementPlan(sheets: LiveSheet[]) {
@@ -127,6 +134,12 @@ export function refinementPlan(sheets: LiveSheet[]) {
       patches.push({ sheet: s.id, row, column, value, formula, reason });
   };
   for (const s of sheets) {
+    if (s.readOnly) {
+      warnings.push(
+        `${s.file}: monitoring only — no source formulas, row keys or validations will be changed.`,
+      );
+      continue;
+    }
     if (s.title === "Seedlist 2026" && s.file === "DDS commercial pipeline")
       continue;
     const h = s.rows.findIndex(
@@ -344,6 +357,11 @@ export async function applyRefinements(
   plan: ReturnType<typeof refinementPlan>,
   beforeWrite?: (backups: { source: string; url: string }[]) => Promise<void>,
 ) {
+  if (plan.patches.some((p) => sheets.find((s) => s.id === p.sheet)?.readOnly))
+    throw new GoogleHttpError(
+      403,
+      "DDO adalah sumber monitoring saja; perubahan source diblokir.",
+    );
   const backups: { source: string; url: string }[] = [];
   const groups = [
     ...new Set(
