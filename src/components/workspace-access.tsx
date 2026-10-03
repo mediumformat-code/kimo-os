@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { ArrowRight, Mail, ShieldCheck, LogOut } from "lucide-react";
 import { cloudConfiguration, getSupabase } from "@/lib/supabase";
+import { startupErrorMessage } from "@/lib/cloud-config";
 import { createCloudWorkspaceService } from "@/services/cloud-workspace";
 import { CommandCenter } from "./command-center";
 const configuration = cloudConfiguration();
@@ -78,12 +79,10 @@ export function WorkspaceAccess() {
         active = false;
         listener.subscription.unsubscribe();
       };
-    } catch {
+    } catch (cause) {
       queueMicrotask(() => {
         if (active) {
-          setError(
-            "Supabase configuration is invalid. Check the project URL and publishable key.",
-          );
+          setError(startupErrorMessage(cause));
           setLoading(false);
         }
       });
