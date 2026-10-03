@@ -100,6 +100,7 @@ async function newPage(auth = false) {
         await route.fulfill({
           json: {
             hash: refined ? "refined" : "initial",
+            inputHash: "input-fingerprint",
             canEdit: true,
             patchCount: refined ? 0 : 1,
             changes: refined ? [] : ["Repair total"],
@@ -130,6 +131,7 @@ async function newPage(auth = false) {
         actions.push(body.action);
         if (body.action === "refine") {
           assert.equal(body.hash, "initial");
+          assert.equal(body.inputHash, "input-fingerprint");
           refined = true;
         }
         if (body.action === "enable") {

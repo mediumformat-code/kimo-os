@@ -97,6 +97,13 @@ export function sourceHash(sheets: LiveSheet[]) {
     .update(JSON.stringify(sheets.map((s) => [s.id, s.rows, s.formulas])))
     .digest("hex");
 }
+// FORMULA render includes literal input cells. Ignore recalculated display values
+// when checking for edits during backup (NOW/TODAY must not invalidate a backup).
+export function sourceInputHash(sheets: LiveSheet[]) {
+  return createHash("sha256")
+    .update(JSON.stringify(sheets.map((s) => [s.id, s.title, s.formulas])))
+    .digest("hex");
+}
 export function refinementPlan(sheets: LiveSheet[]) {
   const patches: CellPatch[] = [];
   const warnings: string[] = [];
@@ -293,21 +300,42 @@ export async function googlePost<T>(
   url: string,
   token: string,
   body: unknown,
+  stage = "Google Sheets",
 ): Promise<T> {
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(20000),
-  });
-  if (!response.ok)
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(20000),
+    });
+  } catch {
     throw new GoogleHttpError(
-      response.status === 403 ? 403 : 503,
-      "Google Sheets tidak menerima perubahan. Periksa izin edit dan koneksi Google.",
+      503,
+      `${stage}: koneksi Google terputus atau timeout. Baca preview kembali sebelum retry.`,
     );
+  }
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null);
+    const raw =
+      typeof payload?.error?.message === "string"
+        ? payload.error.message
+        : "Google menolak operasi.";
+    const detail = raw
+      .replaceAll(token, "[redacted]")
+      .replace(/(?:ya29\.|GOCSPX-)[A-Za-z0-9._-]+/g, "[redacted]")
+      .slice(0, 400);
+    throw new GoogleHttpError(
+      [400, 401, 403, 404, 409, 429].includes(response.status)
+        ? response.status
+        : 503,
+      `${stage} · Google ${response.status}: ${detail}`,
+    );
+  }
   return response.json();
 }
 export async function applyRefinements(
@@ -338,12 +366,14 @@ export async function applyRefinements(
           title: `KIMO pre-refine backup ${new Date().toISOString()} — ${tabs[0].file}`,
         },
       },
+      `Membuat backup ${tabs[0].file}`,
     );
     for (const tab of tabs)
       await googlePost(
         `https://sheets.googleapis.com/v4/spreadsheets/${id}/sheets/${tab.sheetId}:copyTo`,
         token,
         { destinationSpreadsheetId: created.spreadsheetId },
+        `Menyalin backup ${tab.file} / ${tab.title}`,
       );
     backups.push({
       source: id,
@@ -430,6 +460,7 @@ export async function applyRefinements(
       `https://sheets.googleapis.com/v4/spreadsheets/${id}:batchUpdate`,
       token,
       { requests },
+      `Memperbaiki ${tabs[0].file}`,
     );
   }
   return backups;

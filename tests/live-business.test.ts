@@ -8,6 +8,9 @@ import {
 import { emptyWorkspace } from "../src/services/import-workspace";
 import {
   refinementPlan,
+  sourceInputHash,
+  sourceHash,
+  googlePost,
   applyRefinements,
   type LiveSheet,
 } from "../src/integrations/google/business";
@@ -114,4 +117,75 @@ test("live endpoints reject unsigned callers", async () => {
 test("source dates reject invalid calendar dates", () => {
   assert.equal(normalizeSourceDate("22/07/2026"), "2026-07-22");
   assert.equal(normalizeSourceDate("31/02/2026"), "31/02/2026");
+});
+
+test("backup edit fingerprint ignores volatile formula results but detects changed inputs", () => {
+  const before = task([
+    ["NOW", "Status"],
+    ["12:00", "Open"],
+  ]);
+  before.formulas = [
+    ["NOW", "Status"],
+    ["=NOW()", "Open"],
+  ];
+  const after = structuredClone(before);
+  after.rows[1][0] = "12:01";
+  assert.equal(sourceInputHash([before]), sourceInputHash([after]));
+  assert.notEqual(sourceHash([before]), sourceHash([after]));
+  after.formulas[1][1] = "Done";
+  assert.notEqual(sourceInputHash([before]), sourceInputHash([after]));
+});
+test("Google failures identify operation and redact access credentials", async () => {
+  const old = global.fetch;
+  global.fetch = async () =>
+    Response.json(
+      {
+        error: {
+          message: "The caller does not have permission. TEST_ACCESS_TOKEN",
+        },
+      },
+      { status: 403 },
+    );
+  try {
+    await assert.rejects(
+      () =>
+        googlePost(
+          "https://example.test",
+          "TEST_ACCESS_TOKEN",
+          {},
+          "Menyalin backup Test",
+        ),
+      (e) => {
+        assert.match((e as Error).message, /Menyalin backup Test · Google 403/);
+        assert.match((e as Error).message, /does not have permission/);
+        assert.ok(!(e as Error).message.includes("TEST_ACCESS_TOKEN"));
+        return true;
+      },
+    );
+  } finally {
+    global.fetch = old;
+  }
+});
+test("a failed backup copy never reaches source updates", async () => {
+  const old = global.fetch;
+  const calls: string[] = [];
+  global.fetch = async (input) => {
+    calls.push(String(input));
+    return String(input).includes(":copyTo")
+      ? Response.json(
+          { error: { message: "Permission denied" } },
+          { status: 403 },
+        )
+      : Response.json({ spreadsheetId: "backup" });
+  };
+  try {
+    const s = task([header, a.slice(0, -1)]);
+    await assert.rejects(
+      () => applyRefinements("test", [s], refinementPlan([s])),
+      /Menyalin backup/,
+    );
+    assert.ok(!calls.some((c) => c.endsWith(":batchUpdate")));
+  } finally {
+    global.fetch = old;
+  }
 });

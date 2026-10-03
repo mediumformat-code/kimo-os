@@ -1,6 +1,7 @@
 import { getSupabase } from "@/lib/supabase";
 export interface BusinessPreview {
   hash: string;
+  inputHash: string;
   canEdit: boolean;
   patchCount: number;
   changes: string[];

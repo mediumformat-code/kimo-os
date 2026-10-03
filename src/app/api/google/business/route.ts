@@ -10,6 +10,7 @@ import {
 import {
   readLiveSheets,
   sourceHash,
+  sourceInputHash,
   refinementPlan,
   applyRefinements,
   SHEETS_WRITE_SCOPE,
@@ -62,6 +63,7 @@ export async function GET(request: Request) {
     return Response.json(
       {
         hash: sourceHash(sheets),
+        inputHash: sourceInputHash(sheets),
         canEdit: connection?.scopes?.includes(SHEETS_WRITE_SCOPE) ?? false,
         patchCount: plan.patches.length,
         changes: [...new Set(plan.patches.map((p) => p.reason))],
@@ -111,6 +113,7 @@ export async function POST(request: Request) {
     const body = (await boundedBody(request)) as {
       action?: string;
       hash?: string;
+      inputHash?: string;
       expectedRevision?: number;
     };
     if (!["refine", "enable", "sync"].includes(body.action ?? ""))
@@ -129,20 +132,16 @@ export async function POST(request: Request) {
           403,
           "Connect Google dengan izin edit Sheets dahulu.",
         );
-      if (body.hash !== hash)
+      if (body.inputHash !== sourceInputHash(sheets))
         throw new GoogleHttpError(
           409,
           "Sheet berubah sejak preview. Baca preview kembali sebelum refine.",
         );
       let backups: { source: string; url: string }[] = [];
+      let backupSaved = false;
       try {
         backups = await applyRefinements(token, sheets, plan, async (saved) => {
           backups = saved;
-          if (sourceHash(await readLiveSheets(token)) !== hash)
-            throw new GoogleHttpError(
-              409,
-              "Source berubah selama backup; preview ulang sebelum refine.",
-            );
           const snapshot = {
             events: [],
             mail: [],
@@ -166,11 +165,27 @@ export async function POST(request: Request) {
               503,
               "Backup metadata belum tersimpan; source tidak diubah.",
             );
+          backupSaved = true;
+          if (
+            sourceInputHash(await readLiveSheets(token)) !==
+            sourceInputHash(sheets)
+          )
+            throw new GoogleHttpError(
+              409,
+              "Input source berubah selama backup; preview ulang sebelum refine. Backup sudah tersimpan.",
+            );
         });
-      } catch {
+      } catch (error) {
+        const cause =
+          error instanceof GoogleHttpError
+            ? error.message
+            : error instanceof Error &&
+                /^Google API returned \d+$/.test(error.message)
+              ? error.message
+              : "Koneksi atau penyimpanan server gagal.";
         throw new GoogleHttpError(
-          503,
-          "Refine belum selesai; beberapa sumber mungkin telah diperbaiki. Baca preview untuk retry. Backup tersedia di Sources jika tahap backup sudah selesai.",
+          error instanceof GoogleHttpError ? error.status : 503,
+          `Refine belum selesai. ${cause} Baca preview kembali untuk retry. ${backupSaved ? "Link backup tersedia di Sources." : "Tahap backup belum selesai; source belum ditulis oleh operasi ini."}`,
         );
       }
       const saved = await getConnection(owner);
@@ -212,7 +227,10 @@ export async function POST(request: Request) {
         sheets,
         { ...plan, statuses: {} },
         async (backups) => {
-          if (sourceHash(await readLiveSheets(token)) !== hash)
+          if (
+            sourceInputHash(await readLiveSheets(token)) !==
+            sourceInputHash(sheets)
+          )
             throw new GoogleHttpError(
               409,
               "Source berubah selama backup; coba Sync kembali.",

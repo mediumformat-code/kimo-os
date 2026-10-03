@@ -31,6 +31,14 @@ export function LiveBusiness({
       await action();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Koneksi gagal.");
+      // Re-read without clearing the original failure: show remaining patches
+      // and persisted backup links after a partial refinement.
+      try {
+        setPreview(await liveGoogle<BusinessPreview>());
+        setReviewed(false);
+      } catch {
+        /* Preserve the last known preview if Google is unavailable. */
+      }
     } finally {
       setBusy(false);
     }
@@ -189,7 +197,11 @@ export function LiveBusiness({
               disabled={busy || !preview.canEdit || !reviewed}
               onClick={() =>
                 run(async () => {
-                  await liveGoogle({ action: "refine", hash: preview.hash });
+                  await liveGoogle({
+                    action: "refine",
+                    hash: preview.hash,
+                    inputHash: preview.inputHash,
+                  });
                   setNotice(
                     "Refine source selesai. Baca ulang preview untuk aktivasi sync.",
                   );
