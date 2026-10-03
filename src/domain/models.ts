@@ -66,6 +66,8 @@ export interface Meeting {
   project: string;
 }
 export interface Action {
+  sourceStatus?: string;
+  sourceRef?: string;
   id: string;
   description: string;
   owner: string;
@@ -94,6 +96,8 @@ export interface InboxItem {
   status: "Review" | "Delegate" | "Action" | "Decision" | "Archived";
 }
 export interface Workspace {
+  sourceSheets?: import("@/services/business-import").SourceSheet[];
+  sourceRecords?: import("@/services/business-import").SourceRecord[];
   metadata?: {
     dataset: "sample" | "live";
     importedAt?: string;

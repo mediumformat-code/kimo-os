@@ -1,4 +1,7 @@
 "use client";
+import { BusinessRecords } from "./business-records";
+import { readExcelFiles } from "@/services/excel-import";
+import { prepareBusinessSheets } from "@/services/business-import";
 import { BusinessSheetImport } from "./google/sheet-import";
 import { useEffect, useState } from "react";
 import { Upload, Download, ArrowUpRight } from "lucide-react";
@@ -216,6 +219,7 @@ export function DataHub({
           {error}
         </div>
       )}
+      <BusinessRecords data={data} />
       <BusinessSheetImport
         review={(workspace) => {
           setPrepared(workspace);
@@ -224,6 +228,39 @@ export function DataHub({
       />
       <section className="panel detail-card">
         <h2>Workspace asli DDS & DDO</h2>
+        <label className="secondary-button upload-label">
+          {busy
+            ? "Reading Excel…"
+            : "Choose DDO / DDS Excel files (select all 3)"}
+          <input
+            type="file"
+            accept=".xlsx"
+            multiple
+            disabled={busy}
+            onChange={async (e) => {
+              const files = Array.from(e.target.files ?? []);
+              if (!files.length) return;
+              setBusy(true);
+              setError("");
+              try {
+                const sheets = await readExcelFiles(files);
+                const imported = prepareBusinessSheets(sheets);
+                if (!imported.sourceRecords?.length)
+                  throw new Error("Tidak ada tabel DDO/DDS yang dikenali.");
+                setPrepared(imported);
+                setBackedUp(false);
+              } catch (error) {
+                setError(
+                  error instanceof Error
+                    ? error.message
+                    : "Excel tidak dapat dibaca",
+                );
+              } finally {
+                setBusy(false);
+              }
+            }}
+          />
+        </label>
         <p>
           Impor JSON dari GPT atau backup OS. Data ditampilkan untuk review
           sebelum menggantikan seluruh workspace; tidak digabung otomatis dengan
@@ -479,6 +516,18 @@ export function DataHub({
               </span>
             </div>
           ))}
+          <p>
+            Task: {(prepared ?? selected?.payload)?.actions.length ?? 0} · Lead:{" "}
+            {(prepared ?? selected?.payload)?.sourceRecords?.filter(
+              (r) => r.kind === "lead",
+            ).length ?? 0}{" "}
+            · Commercial:{" "}
+            {(prepared ?? selected?.payload)?.sourceRecords?.filter(
+              (r) => r.kind === "commercial",
+            ).length ?? 0}{" "}
+            · Source tabs:{" "}
+            {(prepared ?? selected?.payload)?.sourceSheets?.length ?? 0}
+          </p>
           <div className="account-actions">
             <button
               className="secondary-button"

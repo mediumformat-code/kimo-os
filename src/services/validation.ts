@@ -120,6 +120,37 @@ export function isWorkspace(value: unknown): value is Workspace {
       !["sample", "live"].includes(value.metadata.dataset as string))
   )
     return false;
+  if (
+    value.sourceSheets !== undefined &&
+    (!Array.isArray(value.sourceSheets) ||
+      !value.sourceSheets.every(
+        (s) =>
+          object(s) &&
+          ["id", "file", "title"].every((k) => typeof s[k] === "string") &&
+          Array.isArray(s.rows) &&
+          s.rows.every(
+            (r) => Array.isArray(r) && r.every((c) => typeof c === "string"),
+          ),
+      ))
+  )
+    return false;
+  if (
+    value.sourceRecords !== undefined &&
+    (!Array.isArray(value.sourceRecords) ||
+      !value.sourceRecords.every(
+        (r) =>
+          object(r) &&
+          typeof r.id === "string" &&
+          typeof r.sheet === "string" &&
+          Number.isInteger(r.row) &&
+          ["task", "lead", "commercial", "project"].includes(
+            r.kind as string,
+          ) &&
+          object(r.fields) &&
+          Object.values(r.fields).every((v) => typeof v === "string"),
+      ))
+  )
+    return false;
   const workspace = value as unknown as Workspace;
   const projectIds = new Set(workspace.projects.map((p) => p.id));
   const companyIds = new Set(workspace.companies.map((c) => c.id));

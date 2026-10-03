@@ -1,4 +1,5 @@
 "use client";
+import { prepareBusinessSheets } from "@/services/business-import";
 import { useState } from "react";
 import { Workspace } from "@/domain/models";
 import { businessSources } from "@/integrations/google/sources";
@@ -49,6 +50,24 @@ export function BusinessSheetImport({
   }
   function prepare() {
     try {
+      const specialized = prepareBusinessSheets([
+        {
+          id: item.id,
+          file: item.name,
+          title:
+            item.company === "DDO"
+              ? "DDO TASK"
+              : source === 1
+                ? "Project Pipeline 2026"
+                : "Pipeline 2026 Detail",
+          rows,
+        },
+      ]);
+      if (specialized.sourceRecords?.length) {
+        setStaged((s) => ({ ...s, [item.id]: specialized }));
+        setError("");
+        return;
+      }
       if (!nameColumn || !ownerColumn)
         throw new Error("Pilih kolom nama proyek dan owner sebelum review.");
       const projects = rows
@@ -144,8 +163,9 @@ export function BusinessSheetImport({
           <p>
             {rows.length} baris terbaca (maksimal 500 × 52 kolom). Pilih baris
             header; health memakai Watch dan priority 50 bila belum tersedia.
-            Mapping satu sumber menggantikan workspace; gabungkan DDS/DDO lewat
-            JSON bila ingin impor sekaligus.
+            Tabel task, lead dan commercial dikenali otomatis. Tambahkan tiap
+            sumber ke staged import, lalu review gabungan sebelum mengganti
+            workspace.
           </p>
           <label className="field-label">
             Header row
@@ -205,7 +225,18 @@ export function BusinessSheetImport({
             className="primary-button"
             onClick={() => {
               try {
-                review(mergeProjectSources(Object.values(staged)));
+                const sources = Object.values(staged);
+                if (sources.every((s) => s.sourceSheets?.length))
+                  review(
+                    prepareBusinessSheets(
+                      sources.flatMap((s) => s.sourceSheets ?? []),
+                    ),
+                  );
+                else if (sources.some((s) => s.sourceSheets?.length))
+                  throw new Error(
+                    "Jangan gabungkan mapping manual dan otomatis dalam satu impor.",
+                  );
+                else review(mergeProjectSources(sources));
               } catch (e) {
                 setError(
                   e instanceof Error ? e.message : "Sumber tidak konsisten.",

@@ -27,6 +27,7 @@ export function topPriorities(data: Workspace, company?: CompanyId) {
     .filter(
       (a) =>
         a.status === "Open" &&
+        a.sourceStatus !== "On Hold" &&
         (!company ||
           data.projects.find((p) => p.id === a.project)?.company === company),
     )

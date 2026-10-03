@@ -42,7 +42,42 @@ export async function POST(request: Request) {
         409,
         "Simpan workspace terlebih dahulu sebelum menggunakan AI.",
       );
-    const context = JSON.stringify(data.data);
+    const workspace = data.data;
+    const words = body.messages
+      .filter((m) => m.role === "user")
+      .slice(-1)
+      .flatMap((m) => m.content.toLowerCase().split(/\W+/))
+      .filter((w) => w.length > 3);
+    const records = [...(workspace.sourceRecords ?? [])].sort((a, b) => {
+      const score = (r: { fields: Record<string, string> }) =>
+        words.filter((w) =>
+          Object.values(r.fields).join(" ").toLowerCase().includes(w),
+        ).length;
+      return score(b) - score(a);
+    });
+    const selectedRecords = [];
+    const base = {
+      ...workspace,
+      sourceSheets: undefined,
+      sourceRecords: undefined,
+    };
+    let budget = 175000 - JSON.stringify(base).length;
+    for (const record of records) {
+      const size = JSON.stringify(record).length;
+      if (size > budget) continue;
+      selectedRecords.push(record);
+      budget -= size;
+    }
+    const context = JSON.stringify({
+      ...base,
+      sourceRecords: selectedRecords,
+      contextCoverage: {
+        sourceRecordsIncluded: selectedRecords.length,
+        sourceRecordsTotal: records.length,
+        rawSheetArchiveIncluded: false,
+        note: "Raw tabs are archived in OS. Records selected by relevance to the latest prompt; do not claim exhaustive totals when context is partial.",
+      },
+    });
     if (context.length > 180000)
       throw new GoogleHttpError(
         413,

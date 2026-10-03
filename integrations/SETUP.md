@@ -43,3 +43,11 @@ Untuk chat AI dari dalam KIMO OS, tambahkan `OPENAI_API_KEY` server-only di Verc
 Plaud tersedia melalui impor hasil export teks/Markdown, bukan sinkronisasi akun langsung. Sources → Plaud import → isi judul, tanggal, proyek terkait dan peserta → review ringkasan → simpan sebagai meeting. Koneksi langsung baru dapat dibuat setelah akses API/webhook resmi tersedia.
 
 Export proyek GPT tersedia melalui impor JSON. Review menunjukkan perubahan sebelum penggantian. Sumber sheet, JSON, dan Plaud diperlakukan sebagai data, bukan instruksi untuk mengeksekusi tindakan.
+
+## Impor tiga file Excel asli
+
+Sources → Choose DDO / DDS Excel files → pilih ketiga file sekaligus. Semua tab diarsipkan; task DDO dikelompokkan berdasarkan Workspace, lead menjadi kontak/record tersendiri, dan tab Project Pipeline 2026 DDS menjadi proyek operasional. Pipeline 2026 Detail disimpan sebagai record komersial; nilainya tidak dijumlah atau digabung berdasarkan nama saja. Tab salinan, kalender, dan ringkasan hanya diarsipkan. Status asli, PIC, due date, catatan, dan deliverables dipertahankan. ID task berulang tidak menyebabkan task berbeda hilang.
+
+Review jumlah proyek, task, lead, commercial dan tab → Download current backup first → Confirm replacement. Tidak perlu SQL tambahan. File diproses dalam browser dan workspace baru disimpan lewat sesi Supabase pemilik setelah konfirmasi.
+
+Chat OS menggunakan proyek/task dan record sumber yang paling relevan dengan prompt dalam batas konteks; arsip tab mentah tidak dikirim seluruhnya. Jangan gunakan jawaban konteks parsial untuk total keuangan menyeluruh. Nilai error formula/cached date ditandai dan tidak dianggap nol.
