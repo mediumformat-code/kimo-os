@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Sparkles, ArrowRight } from "lucide-react";
 import { getSupabase } from "@/lib/supabase";
 export function AiChat({ cloud }: { cloud: boolean }) {
@@ -9,6 +9,34 @@ export function AiChat({ cloud }: { cloud: boolean }) {
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [configured, setConfigured] = useState<boolean>();
+  const [statusError, setStatusError] = useState("");
+  useEffect(() => {
+    if (!cloud) return;
+    let active = true;
+    async function check() {
+      try {
+        const { data } = await getSupabase().auth.getSession();
+        if (!data.session) throw new Error("Login untuk mengecek koneksi AI.");
+        const response = await fetch("/api/ai/status", {
+          headers: { Authorization: `Bearer ${data.session.access_token}` },
+        });
+        const result = await response.json();
+        if (!response.ok)
+          throw new Error(result.error || "Status AI belum dapat diperiksa.");
+        if (active) setConfigured(result.configured);
+      } catch (e) {
+        if (active)
+          setStatusError(
+            e instanceof Error ? e.message : "Status belum tersedia.",
+          );
+      }
+    }
+    void check();
+    return () => {
+      active = false;
+    };
+  }, [cloud]);
   async function send(e: React.FormEvent) {
     e.preventDefault();
     if (!input.trim() || busy) return;
@@ -49,6 +77,38 @@ export function AiChat({ cloud }: { cloud: boolean }) {
         Jawaban menggunakan workspace tersimpan. Saat kamu mengirim prompt,
         konteks workspace dikirim ke OpenAI. Tidak ada perubahan otomatis.
       </p>
+      <div className="chief-connection-status">
+        <p>
+          <strong>OpenAI:</strong>{" "}
+          {!cloud
+            ? "Login required"
+            : configured === undefined
+              ? statusError || "Checking configuration…"
+              : configured
+                ? "Server key configured · kirim prompt untuk uji koneksi"
+                : "Belum dikonfigurasi"}
+        </p>
+        {configured === false && (
+          <p>
+            Vercel → project KIMO OS → Environment Variables: tambahkan{" "}
+            <code>OPENAI_API_KEY</code> sebagai Secret untuk Production, lalu
+            redeploy. API memakai billing OpenAI terpisah dari langganan
+            ChatGPT. Jangan kirim key di chat.
+          </p>
+        )}
+        <p>
+          <strong>GPT / Plaud context:</strong> konteks yang sudah disimpan di
+          Sources dapat dibaca Chief of Staff. Private ChatGPT history dan akun
+          Plaud belum tersinkron otomatis.
+        </p>
+        <a href="/#sources">Import GPT Projects / Plaud in Sources →</a>
+        <p>
+          Custom GPT → Configure → Actions → Import from URL:{" "}
+          <code>https://kimo-os-rbcy.vercel.app/api/gpt/schema</code>. Pilih API
+          Key / Bearer dan gunakan key yang dibuat melalui Sources → GPT ↔ KIMO
+          OS.
+        </p>
+      </div>
       {messages.map((m, i) => (
         <div className={`chat-message ${m.role}`} key={i}>
           <small>{m.role === "user" ? "You" : "KIMO OS"}</small>
