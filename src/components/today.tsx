@@ -1,13 +1,17 @@
+"use client";
 import {
   ArrowRight,
   ArrowUpRight,
   Check,
-  Clock3,
+  CalendarDays,
+  ListTodo,
+  GitBranch,
   TriangleAlert,
-  Sparkles,
-  CircleDollarSign,
+  FolderOpen,
+  Users,
+  Inbox,
 } from "lucide-react";
-import {
+import type {
   CompanyId,
   Workspace,
   Action,
@@ -15,322 +19,367 @@ import {
   Project,
   Meeting,
 } from "@/domain/models";
-import { operatingDate } from "@/services/import-workspace";
 import { topPriorities } from "@/services/workspace";
-import { Avatar, Badge, Empty, SectionTitle } from "./ui";
+import { operatingDate } from "@/services/import-workspace";
+import { placement, activeProject, companies } from "@/presentation/hierarchy";
+import { Avatar, Badge, Empty } from "./ui";
+import { ExecutiveBrief } from "./dashboard/executive-brief";
+import { BusinessPerformance } from "./charts/business-performance";
+import type { LucideIcon } from "lucide-react";
+function Heading({
+  icon: Icon,
+  title,
+  onMore,
+}: {
+  icon: LucideIcon;
+  title: string;
+  onMore: () => void;
+}) {
+  return (
+    <div className="card-heading">
+      <h2>
+        <Icon size={16} />
+        {title}
+      </h2>
+      <button onClick={onMore} className="view-all">
+        View all <ArrowRight size={12} />
+      </button>
+    </div>
+  );
+}
+const dateLabel = (date: string, day: string) =>
+  !date || !Number.isFinite(Date.parse(date))
+    ? "No deadline"
+    : date === day
+      ? "Today"
+      : date < day
+        ? "Overdue"
+        : new Intl.DateTimeFormat("en", {
+            day: "numeric",
+            month: "short",
+            timeZone: "UTC",
+          }).format(new Date(date.slice(0, 10) + "T00:00:00Z"));
 export function Today({
   data,
   company,
+  node,
   navigate,
   open,
   complete,
+  onScope,
 }: {
   data: Workspace;
   company?: CompanyId;
-  navigate: (view: string) => void;
+  node?: string;
+  navigate: (v: string) => void;
   open: (item: Action | Decision | Project | Meeting, kind: string) => void;
   complete: (id: string) => void;
+  onScope: (c?: CompanyId, node?: string) => void;
 }) {
-  const project = (id: string) => data.projects.find((p) => p.id === id)!;
-  const scoped = (id: string) => !company || project(id)?.company === company;
+  const project = (id: string) => data.projects.find((p) => p.id === id);
   const day = operatingDate(data);
-  const live = data.metadata?.dataset === "live";
-  const cashRisk = data.risks.find((r) =>
-    /cash|collections|invoice|piutang|kas|finance/i.test(r.description),
-  );
   const priorities = topPriorities(data, company);
-  const decisions = data.decisions.filter(
-    (d) => d.status === "Needs Kimo" && scoped(d.project),
-  );
-  const meetings = data.meetings.filter(
-    (m) => m.date.startsWith(day) && scoped(m.project),
-  );
-  const risks = data.risks.filter((r) => scoped(r.project));
-  const commitments = data.commitments.filter(
-    (c) => c.status === "Open" && scoped(c.project),
-  );
+  const decisions = data.decisions.filter((d) => d.status === "Needs Kimo");
+  const meetings = data.meetings.filter((m) => m.date.startsWith(day));
+  const commitments = data.commitments
+    .filter((c) => c.status === "Open")
+    .sort((a, b) => a.deadline.localeCompare(b.deadline));
+  const risks = data.risks
+    .filter((r) => r.severity === "High" || (r.deadline && r.deadline <= day))
+    .slice(0, 4);
+  const portfolio = data.projects.filter(activeProject);
   return (
-    <>
-      <div className="brief">
-        <div className="brief-icon">
-          <Sparkles size={19} />
-        </div>
-        <div>
-          <div className="eyebrow">
-            YOUR CEO BRIEF{" "}
-            <span>· {live ? "WORKSPACE DATA" : "SAMPLE DATA"}</span>
-          </div>
-          <p>
-            {decisions.length
-              ? `${decisions.length} decisions need your direction.`
-              : "Your decision inbox is clear."}{" "}
-            {risks.length
-              ? `${risks.length} exceptions to keep in view.`
-              : "No flagged risks in this view."}
-            <br />
-            <span>
-              {company
-                ? "A focused view of what matters in this business."
-                : live
-                  ? priorities.length
-                    ? priorities.map((a) => a.description).join(" · ")
-                    : "Tambahkan tindakan dan komitmen untuk membentuk prioritas CEO."
-                  : "Focus on the venue lease, Q4 programming, and cash collections. The rest is moving."}
-            </span>
-          </p>
-        </div>
-        <span className="brief-stamp">
-          Prepared for you<small>{day}</small>
-        </span>
-      </div>
-      <div className="section-title priorities-heading">
-        <h2>
-          Your top priorities <span className="muted">/</span>{" "}
-          <span className="heading-note">Move these forward today.</span>
-        </h2>
-        <button className="text-button" onClick={() => navigate("Priorities")}>
-          All priorities
-          <ArrowUpRight size={14} />
-        </button>
-      </div>
-      <div className="priority-grid">
-        {priorities.map((a, i) => (
-          <article className="priority-card" key={a.id}>
-            <div className="card-top">
-              <span className="priority-number">0{i + 1}</span>
-              <Badge tone={i === 0 ? "red" : "amber"}>
-                {i === 0 ? "High impact" : "Needs attention"}
-              </Badge>
-              <button
-                aria-label={`Complete ${a.description}`}
-                className="complete-button"
-                onClick={() => complete(a.id)}
-              >
-                <Check size={15} />
-              </button>
-            </div>
-            <button className="card-title" onClick={() => open(a, "action")}>
-              {a.description}
-            </button>
-            <p>{project(a.project)?.latestUpdate}</p>
-            <div className="priority-footer">
-              <span className={`company-dot ${project(a.project)?.company}`} />
-              <span>
-                {
-                  data.companies.find(
-                    (c) => c.id === project(a.project)?.company,
-                  )?.name
-                }
-              </span>
-              <button
-                aria-label={`Open ${a.description}`}
-                onClick={() => open(a, "action")}
-              >
-                <ArrowUpRight size={17} />
-              </button>
-            </div>
-          </article>
-        ))}
-        {!priorities.length && (
-          <Empty
-            text={
-              data.actions.length
-                ? "All priorities are complete. A little room to think."
-                : "Belum ada prioritas. Impor tindakan atau komitmen dari sumber asli."
-            }
+    <div className="today-dashboard">
+      <ExecutiveBrief
+        data={data}
+        company={company}
+        node={node}
+        navigate={navigate}
+      />
+      <div className="executive-work-grid">
+        <section className="executive-card priorities-card">
+          <Heading
+            icon={ListTodo}
+            title="Your top priorities"
+            onMore={() => navigate("Priorities")}
           />
-        )}
-      </div>
-      <div className="dashboard-columns">
-        <div className="dashboard-main">
-          <section className="panel">
-            <SectionTitle
-              title="Decisions waiting on you"
-              count={decisions.length}
-              action="Decision inbox"
-              onAction={() => navigate("Decisions")}
-            />
-            {decisions.slice(0, 3).map((d) => (
-              <button
-                className="decision-row"
-                key={d.id}
-                onClick={() => open(d, "decision")}
-              >
-                <span className="decision-glyph">
-                  <ArrowUpRight size={18} />
-                </span>
-                <span className="row-body">
-                  <strong>{d.issue}</strong>
+          <p className="card-kicker">Three moves. Real momentum.</p>
+          {priorities.map((a, i) => {
+            const p = project(a.project);
+            return (
+              <article className="ceo-priority" key={a.id}>
+                <span className="rank-number">{i + 1}</span>
+                <div>
+                  <button
+                    className="priority-link"
+                    onClick={() => open(a, "action")}
+                  >
+                    {a.description}
+                  </button>
                   <small>
-                    {project(d.project)?.name} <span>·</span>{" "}
-                    {d.deadline === day
-                      ? "Due today"
-                      : `Due ${d.deadline || "not set"}`}
+                    {p ? placement(p).label : "Unassigned"} · {a.owner}
                   </small>
-                </span>
-                <Badge tone={d.deadline === day ? "amber" : ""}>
-                  {d.deadline === day ? "Today" : "This week"}
-                </Badge>
-                <ArrowRight size={16} />
-              </button>
-            ))}
-            {!decisions.length && <Empty text="No decisions waiting on you." />}
-          </section>
-          <section className="panel portfolio">
-            <SectionTitle
-              title="Across the group"
-              action="View portfolio"
-              onAction={() => navigate("Projects")}
-            />
-            <div className="portfolio-header">
-              <span>PROJECT</span>
-              <span>HEALTH</span>
-              <span>OWNER</span>
-            </div>
-            {data.projects
-              .filter(
-                (p) =>
-                  (!company || p.company === company) &&
-                  (live ||
-                    ["medium", "commons", "ggi", "finance"].includes(p.id)),
-              )
-              .slice(0, 4)
-              .map((p) => (
-                <button
-                  className="portfolio-row"
-                  key={p.id}
-                  onClick={() => open(p, "project")}
-                >
-                  <span>
-                    <strong>{p.name}</strong>
-                    <small>{p.nextAction}</small>
+                  <small className="priority-next">
+                    Next: {p?.nextAction || a.description}
+                  </small>
+                  <span className="priority-deadline">
+                    {dateLabel(a.dueDate, day)}
                   </span>
+                </div>
+                <div className="priority-actions">
                   <Badge
                     tone={
-                      p.health === "At risk"
+                      a.priority >= 90
                         ? "red"
-                        : p.health === "Watch"
+                        : a.priority >= 60
                           ? "amber"
                           : "green"
                     }
                   >
-                    <span className="status-dot" />
-                    {p.health}
+                    {a.priority >= 90
+                      ? "High"
+                      : a.priority >= 60
+                        ? "Medium"
+                        : "Low"}
                   </Badge>
-                  <span className="owner-name">
-                    <Avatar name={p.owner} />
-                    {p.owner}
-                  </span>
-                </button>
-              ))}
-          </section>
-          {cashRisk && (
-            <section className="cash-note">
-              <CircleDollarSign size={20} />
-              <div>
-                <strong>Cash needs a closer look</strong>
-                <p>
-                  {cashRisk.description} · {cashRisk.owner}
-                </p>
-              </div>
-              <button
-                aria-label="Open finance exception"
-                onClick={() => open(project(cashRisk.project), "project")}
-              >
-                <ArrowUpRight size={18} />
-              </button>
-            </section>
+                  <button
+                    aria-label={`Complete ${a.description}`}
+                    onClick={() => complete(a.id)}
+                  >
+                    <Check size={13} />
+                  </button>
+                </div>
+              </article>
+            );
+          })}
+          {!priorities.length && (
+            <Empty text="No open priorities in this view." />
           )}
-        </div>
-        <aside className="dashboard-side">
-          <section className="panel schedule">
-            <SectionTitle title="On your calendar" count={meetings.length} />
-            <div className="date-label">
-              TODAY · {day} <span>WIB</span>
-            </div>
-            {meetings.map((m, i) => (
-              <button
-                className="meeting-row"
-                key={m.id}
-                onClick={() => open(m, "meeting")}
+        </section>
+        <section className="executive-card">
+          <Heading
+            icon={GitBranch}
+            title="Decisions needed"
+            onMore={() => navigate("Decisions")}
+          />
+          {decisions.slice(0, 3).map((d) => (
+            <button
+              className="executive-list-item decision-item"
+              key={d.id}
+              onClick={() => open(d, "decision")}
+            >
+              <span className="item-accent" />
+              <span>
+                <strong>{d.issue}</strong>
+                <small>
+                  {project(d.project)?.name} · {d.owner}
+                </small>
+                <small className="item-context">{d.context}</small>
+              </span>
+              <span
+                className={d.deadline <= day ? "due-critical" : "item-date"}
               >
-                <div className="meeting-time">
-                  {new Date(m.date).toLocaleTimeString("en-GB", {
-                    timeZone: "Asia/Jakarta",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                  <small>{i === 0 ? "30 min" : "45 min"}</small>
-                </div>
-                <div className="meeting-line" />
-                <div>
-                  <strong>{m.title}</strong>
-                  <small>{m.participants.join(", ")}</small>
-                  <span className="meeting-location">
-                    {i === 0 ? "Google Meet" : "Double Deer HQ"}
-                  </span>
-                </div>
-              </button>
-            ))}
-            {!meetings.length && (
-              <Empty text="No meetings in this view today." />
-            )}
-            <button className="wide-link" onClick={() => navigate("Meetings")}>
-              View all meetings
-              <ArrowRight size={14} />
+                {dateLabel(d.deadline, day)}
+              </span>
+              <ArrowRight size={12} />
             </button>
-          </section>
-          <section className="panel risks">
-            <SectionTitle title="Keep an eye on" />
-            <div className="side-list">
-              {risks.map((r) => (
-                <button
-                  className="risk-row"
-                  key={r.id}
-                  onClick={() => open(project(r.project), "project")}
-                >
-                  <TriangleAlert
-                    size={17}
-                    className={r.severity === "High" ? "danger" : "warning"}
-                  />
-                  <div>
-                    <strong>{r.description}</strong>
-                    <small>
-                      {project(r.project)?.name} · {r.owner}
-                    </small>
-                  </div>
-                </button>
-              ))}
-            </div>
-            {!risks.length && <Empty text="No flagged risks." />}
-          </section>
-          <section className="panel waiting">
-            <SectionTitle
-              title="Waiting for"
-              action="People"
-              onAction={() => navigate("People")}
-            />
-            {commitments.slice(0, 2).map((c) => (
-              <button
-                className="waiting-row"
-                key={c.id}
-                onClick={() => navigate("People")}
+          ))}
+          {!decisions.length && <Empty text="No decisions waiting on you." />}
+        </section>
+        <section className="executive-card">
+          <Heading
+            icon={TriangleAlert}
+            title="Risks & deadlines"
+            onMore={() => navigate("Projects")}
+          />
+          {risks.map((r) => (
+            <button
+              className="executive-list-item"
+              key={r.id}
+              onClick={() => {
+                const p = project(r.project);
+                if (p) open(p, "project");
+              }}
+            >
+              <span
+                className={`item-accent ${r.severity === "High" ? "critical" : "warning"}`}
+              />
+              <span>
+                <strong>{r.description}</strong>
+                <small>
+                  {project(r.project)?.name} · {r.owner}
+                </small>
+              </span>
+              <span
+                className={r.severity === "High" ? "due-critical" : "item-date"}
               >
-                <Avatar name={c.owner} />
-                <div>
-                  <strong>{c.owner}</strong>
-                  <small>{c.description}</small>
+                {dateLabel(r.deadline, day)}
+              </span>
+            </button>
+          ))}
+          {!risks.length && <Empty text="No executive risks flagged." />}
+        </section>
+        <section className="executive-card meetings-card">
+          <Heading
+            icon={CalendarDays}
+            title="Meetings today"
+            onMore={() => navigate("Meetings")}
+          />
+          {meetings.slice(0, 4).map((m) => (
+            <button
+              className="executive-list-item meeting-item"
+              key={m.id}
+              onClick={() => open(m, "meeting")}
+            >
+              <time>
+                {new Date(m.date).toLocaleTimeString("en-GB", {
+                  timeZone: "Asia/Jakarta",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </time>
+              <span>
+                <strong>{m.title}</strong>
+                <small>{project(m.project)?.name}</small>
+                <small>{m.participants.slice(0, 3).join(", ")}</small>
+              </span>
+              <ArrowRight size={12} />
+            </button>
+          ))}
+          {!meetings.length && (
+            <Empty text="A little room to think. No workspace meetings today." />
+          )}
+          <span className="wib-note">Asia/Jakarta · WIB</span>
+        </section>
+      </div>
+      <BusinessPerformance
+        data={data}
+        company={company}
+        node={node}
+        onScope={onScope}
+        navigate={navigate}
+      />
+      <div className="executive-bottom-grid">
+        <section className="executive-card portfolio-card">
+          <Heading
+            icon={FolderOpen}
+            title="Project portfolio"
+            onMore={() => navigate("Projects")}
+          />
+          <div className="portfolio-groups">
+            {companies
+              .filter((c) => !company || c.id === company)
+              .map((c) => (
+                <div key={c.id}>
+                  <h3>
+                    {c.label}
+                    <small>
+                      {portfolio.filter((p) => p.company === c.id).length}{" "}
+                      active projects
+                    </small>
+                  </h3>
+                  {portfolio
+                    .filter((p) => p.company === c.id)
+                    .slice(0, 3)
+                    .map((p) => (
+                      <button
+                        key={p.id}
+                        className="mini-project"
+                        onClick={() => open(p, "project")}
+                      >
+                        <span className="project-monogram">
+                          {p.name
+                            .replace(/[^A-Za-z]/g, "")
+                            .slice(0, 2)
+                            .toUpperCase()}
+                        </span>
+                        <span>
+                          <strong>{p.name}</strong>
+                          <small>
+                            {placement(p).group} · {p.owner}
+                          </small>
+                        </span>
+                        <Badge
+                          tone={
+                            p.health === "At risk"
+                              ? "red"
+                              : p.health === "Watch"
+                                ? "amber"
+                                : "green"
+                          }
+                        >
+                          {p.health}
+                        </Badge>
+                      </button>
+                    ))}
                 </div>
-                {c.deadline < day ? (
-                  <Badge tone="red">Overdue</Badge>
-                ) : (
-                  <Clock3 size={15} className="muted" />
-                )}
+              ))}
+          </div>
+        </section>
+        <section className="executive-card">
+          <Heading
+            icon={Users}
+            title="People / delegation"
+            onMore={() => navigate("People")}
+          />
+          {commitments.slice(0, 3).map((c) => (
+            <button
+              className="executive-list-item follow-up-item"
+              key={c.id}
+              onClick={() => navigate("People")}
+            >
+              <Avatar name={c.owner} />
+              <span>
+                <strong>Waiting from {c.owner}</strong>
+                <small>{c.description}</small>
+              </span>
+              <span
+                className={c.deadline <= day ? "due-critical" : "item-date"}
+              >
+                {dateLabel(c.deadline, day)}
+              </span>
+            </button>
+          ))}
+          {!commitments.length && (
+            <Empty text="No outstanding commitments. Ownership is clear." />
+          )}
+        </section>
+        <section className="executive-card">
+          <Heading
+            icon={Inbox}
+            title="Inbox / actions"
+            onMore={() => navigate("Inbox")}
+          />
+          {data.inbox
+            .filter((i) => i.status === "Review")
+            .slice(0, 4)
+            .map((i) => (
+              <button
+                className="executive-list-item inbox-item"
+                key={i.id}
+                onClick={() => navigate("Inbox")}
+              >
+                <i
+                  className={
+                    /decision|alert|approval/i.test(i.kind)
+                      ? "signal-critical"
+                      : "signal-neutral"
+                  }
+                />
+                <span>
+                  <strong>{i.title}</strong>
+                  <small>
+                    {i.source} · {i.kind}
+                  </small>
+                </span>
+                <ArrowUpRight size={12} />
               </button>
             ))}
-          </section>
-        </aside>
+          {!data.inbox.some((i) => i.status === "Review") && (
+            <Empty text="You're up to date." />
+          )}
+        </section>
       </div>
-    </>
+    </div>
   );
 }

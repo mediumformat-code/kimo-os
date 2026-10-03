@@ -18,7 +18,7 @@ const built = await build({
     "process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY": '"test-public-key"',
   },
 });
-const html = `<html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>${fs.readFileSync("src/app/globals.css", "utf8")}</style></head><body><div id="root"></div><script>${built.outputFiles[0].text.replaceAll("</script", "<\\/script")}</script></body></html>`;
+const html = `<html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>${fs.readFileSync("src/app/globals.css", "utf8")} ${fs.readFileSync("src/app/executive.css", "utf8")}</style></head><body><div id="root"></div><script>${built.outputFiles[0].text.replaceAll("</script", "<\\/script")}</script></body></html>`;
 const id = "11111111-1111-4111-8111-111111111111";
 const user = {
   id,
@@ -152,6 +152,47 @@ try {
   const two = await newPage(true);
   await one.getByText("Your top priorities").waitFor();
   await two.getByText("Your top priorities").waitFor();
+  await one.setViewportSize({ width: 1600, height: 1100 });
+  await one.screenshot({
+    path: "/tmp/kimo-executive-desktop.png",
+    fullPage: true,
+  });
+  await one.getByText("Workspace tools", { exact: true }).click();
+  await one.getByRole("button", { name: "Sources", exact: true }).click();
+  const capture = one.locator(".capture-panel");
+  await capture.getByLabel("Meeting / project title").fill("Plaud review test");
+  await capture.getByLabel("Owner", { exact: true }).fill("Kimo");
+  await capture
+    .getByLabel("Transcript / source text")
+    .fill("Confirmed transcript from Plaud.");
+  await capture
+    .getByLabel("Reviewed next actions — one per line")
+    .fill("Review partner proposal");
+  await capture
+    .getByRole("button", { name: "Review source", exact: true })
+    .click();
+  assert.match(
+    await capture.locator(".capture-preview").innerText(),
+    /Confirmed transcript/,
+  );
+  // Preview never writes the workspace.
+  assert.equal(
+    row?.data.meetings.some((m) => m.title === "Plaud review test") ?? false,
+    false,
+  );
+  await one.getByRole("button", { name: "Today", exact: true }).click();
+  await one.setViewportSize({ width: 390, height: 844 });
+  assert.equal(
+    await one.evaluate(() => document.documentElement.scrollWidth > innerWidth),
+    false,
+  );
+  await one.waitForTimeout(350);
+  await one.screenshot({
+    path: "/tmp/kimo-executive-mobile.png",
+    fullPage: true,
+  });
+  await one.setViewportSize({ width: 1600, height: 1100 });
+
   await one
     .getByRole("button", {
       name: "Approve Medium Format Q4 budget",
@@ -192,7 +233,7 @@ try {
   offline = true;
   await one
     .getByRole("button", {
-      name: "Complete Unblock the COMMONS venue lease",
+      name: "Complete Unblock the The Others venue lease",
       exact: true,
     })
     .click();

@@ -9,9 +9,6 @@ import {
   CalendarDays,
   Inbox,
   Search,
-  Settings,
-  ChevronDown,
-  Bell,
   ArrowUpRight,
   Menu,
   X,
@@ -37,8 +34,16 @@ import { Tasks } from "./tasks";
 import { Pipeline } from "./pipeline";
 import { Today } from "./today";
 import { WorkspaceViews } from "./workspace-views";
-import { Avatar, Badge, Modal } from "./ui";
+import { Modal } from "./ui";
 import { DataHub } from "./data-hub";
+import {
+  executiveWorkspace,
+  scopeExecutive,
+  companies,
+} from "@/presentation/hierarchy";
+import { ExecutiveSidebar } from "./layout/executive-sidebar";
+import { ExecutiveTopbar } from "./layout/executive-topbar";
+import { ProjectPortfolio } from "./dashboard/project-portfolio";
 import { operatingDate } from "@/services/import-workspace";
 import { GoogleWorkspace, GoogleAgenda } from "./google/workspace";
 import { DetailDialog, Detail } from "./detail-dialog";
@@ -57,7 +62,7 @@ const nav = [
   { name: "Sources", icon: Layers },
 ];
 const subtitles: Record<string, string> = {
-  Today: "A clear head. A focused day.",
+  Today: "Focus on what moves the business forward.",
   Priorities: "The few things that move everything forward.",
   Decisions: "Your direction, where it matters most.",
   Projects: "The group picture. Without the noise.",
@@ -91,6 +96,17 @@ export function CommandCenter({
   const [reloadKey, setReloadKey] = useState(0);
   const [view, setView] = useState("Today");
   const [company, setCompany] = useState<CompanyId>();
+  const [businessNode, setBusinessNode] = useState<string>();
+  const onScope = (next?: CompanyId, node?: string) => {
+    setCompany(next);
+    setBusinessNode(node);
+    setMobile(false);
+  };
+  const presented = scopeExecutive(
+    executiveWorkspace(data),
+    company,
+    businessNode,
+  );
   const [detail, setDetail] = useState<Detail>();
   const [mobile, setMobile] = useState(false);
   const [toast, setToast] = useState("");
@@ -261,20 +277,14 @@ export function CommandCenter({
     setDelegation(undefined);
     setDetail(undefined);
   };
-  const scopedDecisions = data.decisions.filter(
-    (d) =>
-      d.status === "Needs Kimo" &&
-      (!company ||
-        data.projects.find((p) => p.id === d.project)?.company === company),
+  const scopedDecisions = presented.decisions.filter(
+    (d) => d.status === "Needs Kimo",
   ).length;
-  const scopedInbox = data.inbox.filter(
-    (i) =>
-      i.status === "Review" &&
-      (!company ||
-        data.projects.find((p) => p.id === i.project)?.company === company),
+  const scopedInbox = presented.inbox.filter(
+    (i) => i.status === "Review",
   ).length;
   return (
-    <div className="app-shell">
+    <div className="app-shell executive-app">
       <button
         className={`mobile-menu icon-button ${mobile ? "hidden" : ""}`}
         aria-label="Open navigation"
@@ -285,159 +295,66 @@ export function CommandCenter({
       {mobile && (
         <div className="mobile-overlay" onClick={() => setMobile(false)} />
       )}
-      <aside className={`sidebar ${mobile ? "mobile-open" : ""}`}>
-        <div className="brand">
-          <div className="brand-symbol">
-            k<span>◦</span>
-          </div>
-          <span>
-            KIMO<span className="brand-os"> OS</span>
-          </span>
-          <button
-            className="mobile-close icon-button"
-            onClick={() => setMobile(false)}
-            aria-label="Close navigation"
-          >
-            <X size={18} />
-          </button>
-        </div>
-        <button
-          className="workspace-switch"
-          onClick={() => navigate("Settings")}
-        >
-          <span className="workspace-logo">dd.</span>
-          <span>
-            Double Deer Group<small>Personal workspace</small>
-          </span>
-          <ChevronDown size={14} />
-        </button>
-        <div className="nav-caption">WORKSPACE</div>
-        <nav>
-          {nav.map((n) => (
-            <button
-              key={n.name}
-              className={`nav-item ${view === n.name ? "selected" : ""}`}
-              onClick={() => navigate(n.name)}
-            >
-              <n.icon size={18} strokeWidth={1.65} />
-              <span>{n.name}</span>
-              {n.name === "Decisions" && scopedDecisions > 0 && (
-                <span className="nav-count">{scopedDecisions}</span>
-              )}
-              {n.name === "Inbox" && scopedInbox > 0 && (
-                <span className="nav-count inbox-count">{scopedInbox}</span>
-              )}
-              {n.name === "Search" && <kbd>⌘ K</kbd>}
-            </button>
-          ))}
-        </nav>
-        <div className="nav-caption companies-caption">
-          COMPANIES
-          <button
-            aria-label="View all companies"
-            onClick={() => setCompany(undefined)}
-          >
-            +
-          </button>
-        </div>
-        <div className="company-nav">
-          {data.companies.map((c) => (
-            <button
-              key={c.id}
-              className={company === c.id ? "company-selected" : ""}
-              onClick={() => setCompany(company === c.id ? undefined : c.id)}
-            >
-              <span className={`company-dot ${c.id}`} />
-              {c.name}
-              {company === c.id && <Check size={13} />}
-            </button>
-          ))}
-        </div>
-        <div className="sidebar-bottom">
-          <div className="workspace-status">
-            <span className="status-dot" />
-            {cloud ? "Cloud workspace" : "Local workspace"}
-            <Badge>V1.1</Badge>
-          </div>
-          <button
-            className={`nav-item ${view === "Settings" ? "selected" : ""}`}
-            onClick={() => navigate("Settings")}
-          >
-            <Settings size={18} />
-            <span>Settings</span>
-          </button>
-          <button className="profile" onClick={() => navigate("Settings")}>
-            <Avatar name="Kimo" />
-            <span>
-              <strong>Kimo Rizky</strong>
-              <small>Founder & Group CEO</small>
-            </span>
-            <ChevronDown size={14} />
-          </button>
-        </div>
-      </aside>
+      <ExecutiveSidebar
+        view={view}
+        company={company}
+        node={businessNode}
+        navigate={navigate}
+        onScope={onScope}
+        mobile={mobile}
+        onClose={() => setMobile(false)}
+        decisions={scopedDecisions}
+        inbox={scopedInbox}
+        cloud={cloud}
+      />
       <div className="main-shell">
-        <header className="topbar">
-          <div className="breadcrumb">
-            Workspace <span>/</span>
-            <strong>{view}</strong>
-          </div>
-          <div className="topbar-actions">
-            <span className="sample-indicator">
-              <span className="status-dot" />
-              {data.metadata?.dataset === "live"
-                ? "Workspace data"
-                : cloud
-                  ? "Cloud · Sample business data"
-                  : "Sample workspace"}
-            </span>
-            <button
-              className="icon-button"
-              aria-label="Search workspace"
-              onClick={() => navigate("Search")}
-            >
-              <Search size={17} />
-            </button>
-            <button
-              className="icon-button notification"
-              aria-label="Open intelligence inbox"
-              onClick={() => navigate("Inbox")}
-            >
-              <Bell size={18} />
-              {scopedInbox > 0 && <i />}
-            </button>
-          </div>
-        </header>
+        <ExecutiveTopbar
+          navigate={navigate}
+          date={operatingDate(data)}
+          inbox={scopedInbox}
+          sample={data.metadata?.dataset !== "live"}
+        />
         <main>
-          <div className="page-heading">
+          <div
+            className={`page-heading ${view === "Today" ? "editorial-hero" : ""}`}
+          >
             <div>
               <div className="eyebrow">
                 {view === "Today"
                   ? data.metadata?.dataset === "live"
                     ? operatingDate(data)
-                    : "SATURDAY, OCTOBER 3, 2026"
+                    : "TODAY"
                   : "YOUR EXECUTIVE WORKSPACE"}
               </div>
               <h1>
                 {view === "Today"
-                  ? "Good morning, Kimo."
+                  ? `Good ${Number(new Intl.DateTimeFormat("en", { hour: "numeric", hourCycle: "h23", timeZone: "Asia/Jakarta" }).format(new Date())) >= 17 ? "evening" : Number(new Intl.DateTimeFormat("en", { hour: "numeric", hourCycle: "h23", timeZone: "Asia/Jakarta" }).format(new Date())) >= 12 ? "afternoon" : "morning"}, Kimo.`
                   : view === "Search"
                     ? "Ask KIMO OS"
                     : view}
               </h1>
               <p>{subtitles[view]}</p>
             </div>
-            <button className="ask-button" onClick={() => navigate("Search")}>
-              <Sparkles size={16} />
-              Ask KIMO OS<kbd>⌘ K</kbd>
-            </button>
+            {view === "Today" ? (
+              <blockquote className="hero-quote">
+                “Discipline today
+                <br />
+                creates freedom tomorrow.”<cite>— KIMO</cite>
+              </blockquote>
+            ) : (
+              <button className="ask-button" onClick={() => navigate("Search")}>
+                <Sparkles size={16} />
+                Ask KIMO OS<kbd>⌘ K</kbd>
+              </button>
+            )}
           </div>
           {company && (
             <div className="filter-banner">
               <span>
-                Viewing {data.companies.find((c) => c.id === company)?.name}
+                Viewing {companies.find((c) => c.id === company)?.name}
+                {businessNode ? ` · ${businessNode}` : ""}
               </span>
-              <button onClick={() => setCompany(undefined)}>
+              <button onClick={() => onScope()}>
                 All companies <X size={13} />
               </button>
             </div>
@@ -471,15 +388,17 @@ export function CommandCenter({
                 "Preparing your workspace…"
               )}
             </div>
+          ) : view === "Projects" ? (
+            <ProjectPortfolio data={presented} open={open} />
           ) : view === "Tasks" ? (
             <Tasks
-              data={data}
+              data={presented}
               company={company}
               open={open}
               complete={complete}
             />
           ) : view === "Pipeline" ? (
-            <Pipeline data={data} company={company} />
+            <Pipeline data={presented} company={company} />
           ) : view === "Sources" ? (
             <DataHub
               data={data}
@@ -492,20 +411,22 @@ export function CommandCenter({
             <GoogleWorkspace />
           ) : view === "Today" ? (
             <>
-              <GoogleAgenda />
               <Today
-                data={data}
+                data={presented}
+                node={businessNode}
+                onScope={onScope}
                 company={company}
                 navigate={navigate}
                 open={open}
                 complete={complete}
               />
+              <GoogleAgenda />
             </>
           ) : (
             <WorkspaceViews
               key={view}
               view={view}
-              data={data}
+              data={view === "Settings" ? data : presented}
               company={company}
               open={open}
               complete={complete}
@@ -548,7 +469,7 @@ export function CommandCenter({
       {detail && (
         <DetailDialog
           detail={detail}
-          data={data}
+          data={presented}
           onClose={() => setDetail(undefined)}
           decide={decide}
           open={open}

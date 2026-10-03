@@ -1,4 +1,5 @@
 "use client";
+import { ProjectCapture } from "./sources/project-capture";
 import { LiveBusiness } from "./google/live-business";
 import { BusinessRecords } from "./business-records";
 import { readExcelFiles } from "@/services/excel-import";
@@ -226,6 +227,7 @@ export function DataHub({
         expectedRevision={expectedRevision}
         save={save}
       />
+      <ProjectCapture data={data} save={save} />
       <BusinessRecords data={data} />
       {!data.businessSync?.enabled && (
         <details className="panel detail-card">
