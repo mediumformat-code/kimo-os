@@ -80,8 +80,9 @@ export async function GET(request: NextRequest) {
           refreshToken: refresh,
           expiresAt: Date.now() + tokens.expires_in * 1000,
         }),
-        snapshot: null,
-        last_synced_at: null,
+        snapshot: previous?.email === identity.email ? previous.snapshot : null,
+        last_synced_at:
+          previous?.email === identity.email ? previous.last_synced_at : null,
       });
     if (error) throw new Error("Save failed");
     outcome = "connected";

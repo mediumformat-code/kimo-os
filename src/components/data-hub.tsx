@@ -1,4 +1,5 @@
 "use client";
+import { LiveBusiness } from "./google/live-business";
 import { BusinessRecords } from "./business-records";
 import { readExcelFiles } from "@/services/excel-import";
 import { prepareBusinessSheets } from "@/services/business-import";
@@ -219,110 +220,124 @@ export function DataHub({
           {error}
         </div>
       )}
-      <BusinessRecords data={data} />
-      <BusinessSheetImport
-        review={(workspace) => {
-          setPrepared(workspace);
-          setBackedUp(false);
-        }}
+      <LiveBusiness
+        data={data}
+        refresh={refresh}
+        expectedRevision={expectedRevision}
+        save={save}
       />
-      <section className="panel detail-card">
-        <h2>Workspace asli DDS & DDO</h2>
-        <label className="secondary-button upload-label">
-          {busy
-            ? "Reading Excel…"
-            : "Choose DDO / DDS Excel files (select all 3)"}
-          <input
-            type="file"
-            accept=".xlsx"
-            multiple
-            disabled={busy}
-            onChange={async (e) => {
-              const files = Array.from(e.target.files ?? []);
-              if (!files.length) return;
-              setBusy(true);
-              setError("");
-              try {
-                const sheets = await readExcelFiles(files);
-                const imported = prepareBusinessSheets(sheets);
-                if (!imported.sourceRecords?.length)
-                  throw new Error("Tidak ada tabel DDO/DDS yang dikenali.");
-                setPrepared(imported);
-                setBackedUp(false);
-              } catch (error) {
-                setError(
-                  error instanceof Error
-                    ? error.message
-                    : "Excel tidak dapat dibaca",
-                );
-              } finally {
-                setBusy(false);
-              }
+      <BusinessRecords data={data} />
+      {!data.businessSync?.enabled && (
+        <details className="panel detail-card">
+          <summary>Optional file / manual import</summary>
+          <BusinessSheetImport
+            review={(workspace) => {
+              setPrepared(workspace);
+              setBackedUp(false);
             }}
           />
-        </label>
-        <p>
-          Impor JSON dari GPT atau backup OS. Data ditampilkan untuk review
-          sebelum menggantikan seluruh workspace; tidak digabung otomatis dengan
-          data contoh.
-        </p>
-        <div className="account-actions">
-          <button
-            className="secondary-button"
-            onClick={() => downloadWorkspace(data)}
-          >
-            <Download size={14} />
-            Export workspace for GPT / backup
-          </button>
-          <label className="secondary-button upload-label">
-            <Upload size={14} />
-            Choose JSON file
-            <input
-              type="file"
-              accept=".json,.txt"
-              onChange={(e) => file(e, "projects")}
-            />
-          </label>
-        </div>
-        <label className="field-label">
-          Source name
-          <input value={source} onChange={(e) => setSource(e.target.value)} />
-        </label>
-        <label className="field-label">
-          Paste project JSON
-          <textarea
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            maxLength={1000000}
-            placeholder={
-              '{"projects":[{"name":"Nama proyek asli","company":"DDO","owner":"Nama PIC asli","latestUpdate":"Update dari sumber","nextAction":"Langkah berikutnya"}]}'
-            }
-          />
-        </label>
-        <button
-          className="primary-button"
-          onClick={review}
-          disabled={!text.trim() || busy}
-        >
-          Review import
-          <ArrowUpRight size={15} />
-        </button>
-        <p>
-          Minimal tiap proyek: name, company (DDS/DDO/Shared), dan owner. Untuk
-          mengimpor keputusan, tindakan, dan komitmen, gunakan JSON workspace
-          lengkap hasil export. Jika info belum tersedia, biarkan kosong; jangan
-          mengarang data.
-        </p>
-        <button
-          className="text-button clear-workspace"
-          onClick={() => {
-            setClear(true);
-            setBackedUp(false);
-          }}
-        >
-          Clear workspace and keep company structure
-        </button>
-      </section>
+          <section className="panel detail-card">
+            <h2>Workspace asli DDS & DDO</h2>
+            <label className="secondary-button upload-label">
+              {busy
+                ? "Reading Excel…"
+                : "Choose DDO / DDS Excel files (select all 3)"}
+              <input
+                type="file"
+                accept=".xlsx"
+                multiple
+                disabled={busy}
+                onChange={async (e) => {
+                  const files = Array.from(e.target.files ?? []);
+                  if (!files.length) return;
+                  setBusy(true);
+                  setError("");
+                  try {
+                    const sheets = await readExcelFiles(files);
+                    const imported = prepareBusinessSheets(sheets);
+                    if (!imported.sourceRecords?.length)
+                      throw new Error("Tidak ada tabel DDO/DDS yang dikenali.");
+                    setPrepared(imported);
+                    setBackedUp(false);
+                  } catch (error) {
+                    setError(
+                      error instanceof Error
+                        ? error.message
+                        : "Excel tidak dapat dibaca",
+                    );
+                  } finally {
+                    setBusy(false);
+                  }
+                }}
+              />
+            </label>
+            <p>
+              Impor JSON dari GPT atau backup OS. Data ditampilkan untuk review
+              sebelum menggantikan seluruh workspace; tidak digabung otomatis
+              dengan data contoh.
+            </p>
+            <div className="account-actions">
+              <button
+                className="secondary-button"
+                onClick={() => downloadWorkspace(data)}
+              >
+                <Download size={14} />
+                Export workspace for GPT / backup
+              </button>
+              <label className="secondary-button upload-label">
+                <Upload size={14} />
+                Choose JSON file
+                <input
+                  type="file"
+                  accept=".json,.txt"
+                  onChange={(e) => file(e, "projects")}
+                />
+              </label>
+            </div>
+            <label className="field-label">
+              Source name
+              <input
+                value={source}
+                onChange={(e) => setSource(e.target.value)}
+              />
+            </label>
+            <label className="field-label">
+              Paste project JSON
+              <textarea
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                maxLength={1000000}
+                placeholder={
+                  '{"projects":[{"name":"Nama proyek asli","company":"DDO","owner":"Nama PIC asli","latestUpdate":"Update dari sumber","nextAction":"Langkah berikutnya"}]}'
+                }
+              />
+            </label>
+            <button
+              className="primary-button"
+              onClick={review}
+              disabled={!text.trim() || busy}
+            >
+              Review import
+              <ArrowUpRight size={15} />
+            </button>
+            <p>
+              Minimal tiap proyek: name, company (DDS/DDO/Shared), dan owner.
+              Untuk mengimpor keputusan, tindakan, dan komitmen, gunakan JSON
+              workspace lengkap hasil export. Jika info belum tersedia, biarkan
+              kosong; jangan mengarang data.
+            </p>
+            <button
+              className="text-button clear-workspace"
+              onClick={() => {
+                setClear(true);
+                setBackedUp(false);
+              }}
+            >
+              Clear workspace and keep company structure
+            </button>
+          </section>
+        </details>
+      )}
       <section className="panel detail-card">
         <h2>Plaud meeting intelligence</h2>
         <p>

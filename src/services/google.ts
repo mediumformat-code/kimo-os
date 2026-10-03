@@ -24,7 +24,7 @@ export async function googleRequest<T>(
 }
 export const googleService = {
   status: () => googleRequest<GoogleStatus>("status"),
-  connect: () => googleRequest<{ url: string }>("connect", "POST"),
+  connect: (sheetsEdit=false) => googleRequest<{ url: string }>(sheetsEdit?"connect?sheetsEdit=true":"connect", "POST"),
   sync: () =>
     googleRequest<{ snapshot: GoogleSnapshot; lastSyncedAt: string }>(
       "sync",

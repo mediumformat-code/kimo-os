@@ -105,6 +105,7 @@ export function GoogleProvider({ children }: { children: React.ReactNode }) {
             const result = await googleService.sync();
             setStatus((s) => (s ? { ...s, ...result } : s));
             setNotice("Data Google berhasil diperbarui.");
+            window.dispatchEvent(new Event("kimo-business-sync"));
           }),
         disconnect: () =>
           run(async () => {

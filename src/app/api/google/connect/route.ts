@@ -6,6 +6,7 @@ import {
   routeError,
 } from "@/integrations/google/server";
 import { seal } from "@/integrations/google/crypto";
+import { SHEETS_WRITE_SCOPE } from "@/integrations/google/business";
 import { GOOGLE_SCOPES } from "@/integrations/google/types";
 export const runtime = "nodejs";
 export async function POST(request: Request) {
@@ -19,7 +20,15 @@ export async function POST(request: Request) {
       client_id: config.clientId,
       redirect_uri: config.redirectUri,
       response_type: "code",
-      scope: GOOGLE_SCOPES.join(" "),
+      scope: (new URL(request.url).searchParams.get("sheetsEdit") === "true"
+        ? [
+            ...GOOGLE_SCOPES.filter(
+              (s) => !s.endsWith("spreadsheets.readonly"),
+            ),
+            SHEETS_WRITE_SCOPE,
+          ]
+        : GOOGLE_SCOPES
+      ).join(" "),
       state,
       code_challenge: createHash("sha256").update(verifier).digest("base64url"),
       code_challenge_method: "S256",

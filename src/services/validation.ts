@@ -151,6 +151,26 @@ export function isWorkspace(value: unknown): value is Workspace {
       ))
   )
     return false;
+  if (value.businessSync !== undefined) {
+    const s = value.businessSync;
+    if (
+      !object(s) ||
+      typeof s.enabled !== "boolean" ||
+      typeof s.lastSyncedAt !== "string" ||
+      typeof s.sourceHash !== "string" ||
+      ![
+        "projectIds",
+        "actionIds",
+        "personIds",
+        "recordIds",
+        "sheetIds",
+        "warnings",
+      ].every(
+        (k) => Array.isArray(s[k]) && s[k].every((v) => typeof v === "string"),
+      )
+    )
+      return false;
+  }
   const workspace = value as unknown as Workspace;
   const projectIds = new Set(workspace.projects.map((p) => p.id));
   const companyIds = new Set(workspace.companies.map((c) => c.id));

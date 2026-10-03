@@ -2341,3 +2341,5 @@ button:disabled {
     gap: 4px;
   }
 }
+
+.live-cell-preview { overflow-wrap: anywhere; }

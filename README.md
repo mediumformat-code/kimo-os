@@ -114,3 +114,13 @@ npm run preview:build # Regenerate downloadable LOCAL HTML preview
 ```
 
 The cloud implementation is not activated against a live provider in this session. The original connector/AI recommendations remain future work; first activate and verify this persistence milestone using the guide.
+
+### Live business Sheets → KIMO OS
+
+Sources → **Live Google Sheets — DDO / DDS** reads the original three configured spreadsheet IDs. Excel uploads are optional and never act as a live sync source. Known operational tabs supply projects/tasks/leads/commercial records; copied tabs, logs and financial summaries do not become projects. The duplicated commercial Seedlist is excluded from active lead counts.
+
+1. **Read & review live sheets**. The preview shows proposed cell changes, source counts and accounting caveats. Reconnect with **Sheets edit permission** if the existing Google connection only has readonly access. Enable `https://www.googleapis.com/auth/spreadsheets` in Google Auth Platform Data access if required by the consent configuration. No additional SQL migration or environment variable is needed.
+2. **Back up & refine source sheets** backs up affected tabs into new Google spreadsheets, persists backup links before source writes, rechecks the source fingerprint, then updates source cells in per-workbook atomic batches. The three workbook changes are not collectively atomic; on partial failure, backup links remain available and preview/retry applies only remaining changes. Review financial warnings: tax/profit definitions are not inferred. Backups contain affected tabs, not complete copies of every unrelated tab/report.
+3. Read the fresh preview, export an OS backup and activate live sync. Revision-checked writes replace sample/source-managed entities while retaining manual history linked to retained projects. Source row UUIDs preserve identity after sorting; native duplicate IDs are preserved. Subsequent new rows receive UUIDs only after backup; other new formula/header changes stop sync for review.
+
+The OS checks on open, foreground, Google Sync and every five minutes **while the app is open and visible**. This is not an unattended scheduled server job. Source-managed task status/PIC must be edited in Google Sheets. KIMO decisions, meetings and other manual records remain in OS; OS edits are not automatically written back to Google. Pause disables background sync; file import is hidden while live sync is enabled. Missing/invalid required operational sources, a changed preview, failed backup, source refinement requirements or a concurrent workspace revision prevent replacement. The live reader limits imported tabs to 2,000 populated rows and explicitly rejects larger datasets.

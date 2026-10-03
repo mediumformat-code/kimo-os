@@ -96,6 +96,7 @@ export interface InboxItem {
   status: "Review" | "Delegate" | "Action" | "Decision" | "Archived";
 }
 export interface Workspace {
+  businessSync?: import("@/services/live-business").BusinessSyncState;
   sourceSheets?: import("@/services/business-import").SourceSheet[];
   sourceRecords?: import("@/services/business-import").SourceRecord[];
   metadata?: {

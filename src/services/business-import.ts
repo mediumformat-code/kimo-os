@@ -5,6 +5,7 @@ export interface SourceSheet {
   file: string;
   title: string;
   rows: string[][];
+  live?: boolean;
 }
 export interface SourceRecord {
   id: string;
@@ -13,6 +14,15 @@ export interface SourceRecord {
   kind: "task" | "lead" | "commercial" | "project";
   fields: Record<string, string>;
   project?: string;
+}
+function sourceDate(value: string) {
+  const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(value);
+  if (!m) return value;
+  const iso = `${m[3]}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}`;
+  const d = new Date(iso + "T00:00:00Z");
+  return Number.isFinite(d.getTime()) && d.toISOString().slice(0, 10) === iso
+    ? iso
+    : value;
 }
 const norm = (s: string) => s.trim().toLowerCase();
 export const finishedStatus = (s: string) =>
@@ -41,7 +51,7 @@ export function prepareBusinessSheets(sheets: SourceSheet[]): Workspace {
     let p = people.get(key);
     if (!p) {
       p = {
-        id: `source-person-${people.size + 1}`,
+        id: `source-person-${company}-${encodeURIComponent(norm(name))}`,
         name: name.trim(),
         company,
         role,
@@ -55,6 +65,12 @@ export function prepareBusinessSheets(sheets: SourceSheet[]): Workspace {
   };
   for (const sheet of sheets) {
     if (/^_|^copy of/i.test(sheet.title)) continue;
+    if (
+      sheet.live &&
+      sheet.title === "Seedlist 2026" &&
+      sheet.file === "DDS commercial pipeline"
+    )
+      continue;
     const h = sheet.rows.findIndex(
       (r, i) =>
         i < 30 &&
@@ -96,7 +112,14 @@ export function prepareBusinessSheets(sheets: SourceSheet[]): Workspace {
       headers.forEach((c, j) => {
         if (r[j]) fields[`${j + 1}. ${c.trim() || "Column"}`] = r[j];
       });
-      const id = `${sheet.id}-row-${row + 1}`;
+      const stable = get(r, "kimo row key");
+      if (sheet.live && !stable)
+        throw new Error(
+          `${sheet.title}: row ${row + 1} belum memiliki KIMO Row Key.`,
+        );
+      const id = stable
+        ? `${sheet.id}:key:${stable}`
+        : `${sheet.id}-row-${row + 1}`;
       const rec: SourceRecord = {
         id,
         sheet: sheet.id,
@@ -150,7 +173,7 @@ export function prepareBusinessSheets(sheets: SourceSheet[]): Workspace {
           owner: task ? "Unassigned" : owner,
           status: task ? "Active" : status,
           priority,
-          deadline: task ? "" : get(r, "tanggal akhir", "due date"),
+          deadline: task ? "" : sourceDate(get(r, "tanggal akhir", "due date")),
           health: "Watch",
           latestUpdate: task ? "" : get(r, "progress task"),
           nextAction: "",
@@ -183,7 +206,7 @@ export function prepareBusinessSheets(sheets: SourceSheet[]): Workspace {
             .join("\n");
       if (docs && !p.documents.includes(docs)) p.documents.push(docs);
       if (task) {
-        const due = get(r, "due date");
+        const due = sourceDate(get(r, "due date"));
         data.actions.push({
           id,
           description: title,

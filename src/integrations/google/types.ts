@@ -27,6 +27,11 @@ export interface GoogleFile {
   owner: string;
 }
 export interface GoogleSnapshot {
+  businessRefinement?: {
+    at: string;
+    phase: string;
+    backups: { source: string; url: string }[];
+  };
   events: GoogleEvent[];
   mail: GoogleMail[];
   files: GoogleFile[];

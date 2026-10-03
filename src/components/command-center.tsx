@@ -32,6 +32,7 @@ import {
   workspaceService,
   WorkspaceService,
 } from "@/services/workspace";
+import { useLiveSync } from "./google/use-live-sync";
 import { Tasks } from "./tasks";
 import { Pipeline } from "./pipeline";
 import { Today } from "./today";
@@ -175,8 +176,15 @@ export function CommandCenter({
     setSaveError("");
     setReloadKey((k) => k + 1);
   };
-  const complete = (id: string) =>
-    update(
+  const liveNotice = useLiveSync(data, cloud, service.getRevision, refresh);
+  const managedAction = (id: string) =>
+    !!data.businessSync?.enabled && data.businessSync.actionIds.includes(id);
+  const complete = (id: string) => {
+    if (managedAction(id)) {
+      setToast("Edit status di Google Sheets sumber, kemudian Sync.");
+      return;
+    }
+    return update(
       {
         ...data,
         actions: data.actions.map((a) =>
@@ -187,6 +195,7 @@ export function CommandCenter({
       },
       "Priority updated",
     );
+  };
   const open = (item: Action | Decision | Project | Meeting, kind: string) =>
     setDetail({ item, kind });
   const decide = (id: string, option: string) => {
@@ -202,6 +211,10 @@ export function CommandCenter({
     setDetail(undefined);
   };
   const delegate = (id: string) => {
+    if (managedAction(id)) {
+      setToast("Edit PIC di Google Sheets sumber, kemudian Sync.");
+      return;
+    }
     setDelegation(id);
     setOwner(data.people.some((p) => p.name === id) ? id : "Iyas");
     setDescription("");
@@ -438,6 +451,11 @@ export function CommandCenter({
               <button className="secondary-button" onClick={refresh}>
                 Reload latest workspace
               </button>
+            </div>
+          )}
+          {liveNotice && (
+            <div className="notice" role="status">
+              {liveNotice}
             </div>
           )}
           {!ready ? (
