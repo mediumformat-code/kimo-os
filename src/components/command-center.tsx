@@ -32,6 +32,8 @@ import {
   workspaceService,
   WorkspaceService,
 } from "@/services/workspace";
+import { Tasks } from "./tasks";
+import { Pipeline } from "./pipeline";
 import { Today } from "./today";
 import { WorkspaceViews } from "./workspace-views";
 import { Avatar, Badge, Modal } from "./ui";
@@ -44,6 +46,8 @@ const nav = [
   { name: "Priorities", icon: ListTodo },
   { name: "Decisions", icon: GitBranch },
   { name: "Projects", icon: Layers },
+  { name: "Tasks", icon: ListTodo },
+  { name: "Pipeline", icon: Layers },
   { name: "People", icon: Users },
   { name: "Meetings", icon: CalendarDays },
   { name: "Inbox", icon: Inbox },
@@ -56,6 +60,8 @@ const subtitles: Record<string, string> = {
   Priorities: "The few things that move everything forward.",
   Decisions: "Your direction, where it matters most.",
   Projects: "The group picture. Without the noise.",
+  Tasks: "Clear tasks, PICs, and deadlines across DDO and DDS.",
+  Pipeline: "Commercial opportunities, contacts, and source financials.",
   People: "Clear ownership. Fewer loose ends.",
   Meetings: "Turn conversations into forward motion.",
   Inbox: "Signal from across your business.",
@@ -447,6 +453,15 @@ export function CommandCenter({
                 "Preparing your workspace…"
               )}
             </div>
+          ) : view === "Tasks" ? (
+            <Tasks
+              data={data}
+              company={company}
+              open={open}
+              complete={complete}
+            />
+          ) : view === "Pipeline" ? (
+            <Pipeline data={data} company={company} />
           ) : view === "Sources" ? (
             <DataHub
               data={data}

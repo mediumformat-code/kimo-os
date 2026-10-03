@@ -191,9 +191,30 @@ export function DetailDialog({
                       }
                     </p>
                     <div className="detail-meta">
-                      {a.owner} · Due {a.dueDate} ·{" "}
+                      {a.owner} · Due {a.dueDate || "Not provided"} ·{" "}
                       {data.projects.find((p) => p.id === a.project)?.name}
                     </div>
+                    {a.sourceRef && (
+                      <section>
+                        <h3>Source task record</h3>
+                        <p>
+                          Original status: {a.sourceStatus || "Not provided"}.
+                          OS status: {a.status}.
+                        </p>
+                        <dl className="source-fields">
+                          {Object.entries(
+                            data.sourceRecords?.find(
+                              (r) => r.id === a.sourceRef,
+                            )?.fields ?? {},
+                          ).map(([key, value]) => (
+                            <div key={key}>
+                              <dt>{key.replace(/^\d+\.\s*/, "")}</dt>
+                              <dd>{value}</dd>
+                            </div>
+                          ))}
+                        </dl>
+                      </section>
+                    )}
                     <div className="option-list">
                       <button
                         className="primary-button"

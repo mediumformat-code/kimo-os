@@ -2268,3 +2268,76 @@ button:disabled {
 .staged-sources .primary-button {
   margin-top: 16px;
 }
+
+.business-filters {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.business-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin: 24px 0;
+}
+.business-metrics > div {
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  display: grid;
+  gap: 8px;
+}
+.business-metrics strong {
+  font-size: 22px;
+  overflow-wrap: anywhere;
+}
+.business-metrics small {
+  color: var(--muted);
+}
+.pipeline-record {
+  padding: 18px 0;
+  border-bottom: 1px solid var(--line);
+}
+.pipeline-record summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  cursor: pointer;
+}
+.pipeline-record summary > span:first-child {
+  flex: 1;
+  min-width: 0;
+}
+.pipeline-record small {
+  display: block;
+  margin-top: 6px;
+  color: var(--muted);
+}
+.source-fields > div {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) 3fr;
+  gap: 20px;
+  padding: 8px 0;
+}
+.source-fields dd {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 700px) {
+  .business-filters,
+  .business-metrics {
+    grid-template-columns: 1fr;
+  }
+  .pipeline-record summary {
+    flex-wrap: wrap;
+  }
+  .pipeline-record summary > span:first-child {
+    flex-basis: 100%;
+  }
+  .source-fields > div {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+}
