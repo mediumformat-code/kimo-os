@@ -101,7 +101,7 @@ export function AiChat({ cloud }: { cloud: boolean }) {
           Sources dapat dibaca Chief of Staff. Private ChatGPT history dan akun
           Plaud belum tersinkron otomatis.
         </p>
-        <a href="/#sources">Import GPT Projects / Plaud in Sources →</a>
+        <button type="button" onClick={() => window.location.assign("/#sources")}>Import GPT Projects / Plaud in Sources →</a>
         <p>
           Custom GPT → Configure → Actions → Import from URL:{" "}
           <code>https://kimo-os-rbcy.vercel.app/api/gpt/schema</code>. Pilih API

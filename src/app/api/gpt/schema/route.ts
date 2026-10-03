@@ -10,6 +10,7 @@ export async function GET(request: Request) {
     },
     servers: [{ url: server }],
     components: {
+      schemas: {},
       securitySchemes: { bridgeKey: { type: "http", scheme: "bearer" } },
     },
     security: [{ bridgeKey: [] }],
@@ -26,7 +27,11 @@ export async function GET(request: Request) {
                   schema: {
                     type: "object",
                     properties: {
-                      data: { type: "object", additionalProperties: true },
+                      data: {
+                        type: "object",
+                        properties: {},
+                        additionalProperties: true,
+                      },
                       revision: { type: "integer" },
                       policy: { type: "string" },
                     },
@@ -53,6 +58,7 @@ export async function GET(request: Request) {
                     title: { type: "string", maxLength: 200 },
                     workspace: {
                       type: "object",
+                      properties: {},
                       additionalProperties: true,
                       description:
                         "Complete Workspace JSON, preserve all existing entities unless the user explicitly requests removal. Arrays required: companies, projects, people, commitments, decisions, meetings, actions, risks, inbox.",
