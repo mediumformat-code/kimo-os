@@ -42,6 +42,14 @@ function improveDDO_(book) {
   rows.push(['Overdue',`=COUNTIF('DDO TASK'!N2:N${last},"OVERDUE")`],['Review rows',`=COUNTIF('DDO TASK'!O2:O${last},"?*")`]);replaceDashboard_(book,'KIMO Dashboard',rows);
 }
 function improveDDS_(book) {
+  const year=book.getSheetByName('Year');
+  if(year){for(let month=1;month<=12;month++){
+    const baseRow=4+Math.floor((month-1)/3)*9,baseCol=2+((month-1)%3)*8;
+    const formulas=[];for(let week=0;week<6;week++){const row=[];for(let day=0;day<7;day++){
+      const candidate=`${week*7+day+2}-WEEKDAY(DATE($Z$1,${month},1))`;
+      row.push(`=IF(AND(${candidate}>=1,${candidate}<=DAY(EOMONTH(DATE($Z$1,${month},1),0))),${candidate},"")`);
+    }formulas.push(row);}year.getRange(baseRow,baseCol,6,7).setFormulas(formulas);
+  }}
   const s=book.getSheetByName('Project Pipeline 2026');if(!s)throw new Error('Project Pipeline 2026 not found in copy');
   styleKimo_(s,1);s.getRange('B:B').setWrap(true);s.getRange('K:K').setWrap(true);
   const lead=book.getSheetByName('Seedlist 2026');if(lead){lead.getRange('F2').setValue('Email');styleKimo_(lead,2);}
