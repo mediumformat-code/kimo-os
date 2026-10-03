@@ -94,6 +94,11 @@ export interface InboxItem {
   status: "Review" | "Delegate" | "Action" | "Decision" | "Archived";
 }
 export interface Workspace {
+  metadata?: {
+    dataset: "sample" | "live";
+    importedAt?: string;
+    sourceName?: string;
+  };
   companies: Company[];
   projects: Project[];
   people: Person[];

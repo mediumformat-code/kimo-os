@@ -4,6 +4,7 @@ import { isWorkspace } from "./validation";
 export interface WorkspaceService {
   load(): Promise<Workspace>;
   save(data: Workspace): Promise<void>;
+  getRevision?(): number | undefined;
 }
 const KEY = "kimo-os-workspace-v1";
 export const workspaceService: WorkspaceService = {

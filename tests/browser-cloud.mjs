@@ -70,6 +70,13 @@ async function newPage(auth = false) {
   page.on("pageerror", (e) => errors.push(e.message));
   await page.route("**/*", async (route) => {
     const url = new URL(route.request().url());
+    if (url.pathname === "/api/google/status") {
+      await route.fulfill({
+        status: 200,
+        json: { configured: false, connected: false },
+      });
+      return;
+    }
     if (url.hostname === "localhost") {
       await route.fulfill({
         status: 200,

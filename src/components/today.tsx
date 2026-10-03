@@ -15,6 +15,7 @@ import {
   Project,
   Meeting,
 } from "@/domain/models";
+import { operatingDate } from "@/services/import-workspace";
 import { topPriorities } from "@/services/workspace";
 import { Avatar, Badge, Empty, SectionTitle } from "./ui";
 export function Today({
@@ -32,12 +33,17 @@ export function Today({
 }) {
   const project = (id: string) => data.projects.find((p) => p.id === id)!;
   const scoped = (id: string) => !company || project(id)?.company === company;
+  const day = operatingDate(data);
+  const live = data.metadata?.dataset === "live";
+  const cashRisk = data.risks.find((r) =>
+    /cash|collections|invoice|piutang|kas|finance/i.test(r.description),
+  );
   const priorities = topPriorities(data, company);
   const decisions = data.decisions.filter(
     (d) => d.status === "Needs Kimo" && scoped(d.project),
   );
   const meetings = data.meetings.filter(
-    (m) => m.date.startsWith("2026-10-03") && scoped(m.project),
+    (m) => m.date.startsWith(day) && scoped(m.project),
   );
   const risks = data.risks.filter((r) => scoped(r.project));
   const commitments = data.commitments.filter(
@@ -51,7 +57,8 @@ export function Today({
         </div>
         <div>
           <div className="eyebrow">
-            YOUR CEO BRIEF <span>· SAMPLE DATA</span>
+            YOUR CEO BRIEF{" "}
+            <span>· {live ? "WORKSPACE DATA" : "SAMPLE DATA"}</span>
           </div>
           <p>
             {decisions.length
@@ -64,12 +71,16 @@ export function Today({
             <span>
               {company
                 ? "A focused view of what matters in this business."
-                : "Focus on the venue lease, Q4 programming, and cash collections. The rest is moving."}
+                : live
+                  ? priorities.length
+                    ? priorities.map((a) => a.description).join(" · ")
+                    : "Tambahkan tindakan dan komitmen untuk membentuk prioritas CEO."
+                  : "Focus on the venue lease, Q4 programming, and cash collections. The rest is moving."}
             </span>
           </p>
         </div>
         <span className="brief-stamp">
-          Prepared for you<small>Saturday, 3 October</small>
+          Prepared for you<small>{day}</small>
         </span>
       </div>
       <div className="section-title priorities-heading">
@@ -121,7 +132,13 @@ export function Today({
           </article>
         ))}
         {!priorities.length && (
-          <Empty text="All priorities are complete. A little room to think." />
+          <Empty
+            text={
+              data.actions.length
+                ? "All priorities are complete. A little room to think."
+                : "Belum ada prioritas. Impor tindakan atau komitmen dari sumber asli."
+            }
+          />
         )}
       </div>
       <div className="dashboard-columns">
@@ -146,11 +163,13 @@ export function Today({
                   <strong>{d.issue}</strong>
                   <small>
                     {project(d.project)?.name} <span>·</span>{" "}
-                    {d.deadline === "2026-10-03" ? "Due today" : "Due Oct 5"}
+                    {d.deadline === day
+                      ? "Due today"
+                      : `Due ${d.deadline || "not set"}`}
                   </small>
                 </span>
-                <Badge tone={d.deadline === "2026-10-03" ? "amber" : ""}>
-                  {d.deadline === "2026-10-03" ? "Today" : "This week"}
+                <Badge tone={d.deadline === day ? "amber" : ""}>
+                  {d.deadline === day ? "Today" : "This week"}
                 </Badge>
                 <ArrowRight size={16} />
               </button>
@@ -172,8 +191,10 @@ export function Today({
               .filter(
                 (p) =>
                   (!company || p.company === company) &&
-                  ["medium", "commons", "ggi", "finance"].includes(p.id),
+                  (live ||
+                    ["medium", "commons", "ggi", "finance"].includes(p.id)),
               )
+              .slice(0, 4)
               .map((p) => (
                 <button
                   className="portfolio-row"
@@ -203,33 +224,29 @@ export function Today({
                 </button>
               ))}
           </section>
-          <section className="cash-note">
-            <CircleDollarSign size={20} />
-            <div>
-              <strong>
-                {company && company !== "shared"
-                  ? "Keep the group picture in view"
-                  : "Cash needs a closer look"}
-              </strong>
-              <p>
-                {company && company !== "shared"
-                  ? "Switch to Shared / Group for finance exceptions."
-                  : "Rp 240m in overdue collections. Sarah’s recovery plan is due today."}
-              </p>
-            </div>
-            <button
-              aria-label="Open group finance"
-              onClick={() => open(project("finance"), "project")}
-            >
-              <ArrowUpRight size={18} />
-            </button>
-          </section>
+          {cashRisk && (
+            <section className="cash-note">
+              <CircleDollarSign size={20} />
+              <div>
+                <strong>Cash needs a closer look</strong>
+                <p>
+                  {cashRisk.description} · {cashRisk.owner}
+                </p>
+              </div>
+              <button
+                aria-label="Open finance exception"
+                onClick={() => open(project(cashRisk.project), "project")}
+              >
+                <ArrowUpRight size={18} />
+              </button>
+            </section>
+          )}
         </div>
         <aside className="dashboard-side">
           <section className="panel schedule">
             <SectionTitle title="On your calendar" count={meetings.length} />
             <div className="date-label">
-              TODAY · SAT, 03 OCT <span>WIB</span>
+              TODAY · {day} <span>WIB</span>
             </div>
             {meetings.map((m, i) => (
               <button
@@ -304,7 +321,7 @@ export function Today({
                   <strong>{c.owner}</strong>
                   <small>{c.description}</small>
                 </div>
-                {c.deadline < "2026-10-03" ? (
+                {c.deadline < day ? (
                   <Badge tone="red">Overdue</Badge>
                 ) : (
                   <Clock3 size={15} className="muted" />

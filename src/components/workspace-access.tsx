@@ -6,6 +6,7 @@ import { cloudConfiguration, getSupabase } from "@/lib/supabase";
 import { startupErrorMessage } from "@/lib/cloud-config";
 import { createCloudWorkspaceService } from "@/services/cloud-workspace";
 import { CommandCenter } from "./command-center";
+import { GoogleProvider } from "./google/provider";
 const configuration = cloudConfiguration();
 function CloudWorkspace({ session }: { session: Session }) {
   const service = useMemo(
@@ -22,13 +23,15 @@ function CloudWorkspace({ session }: { session: Session }) {
   }
   return (
     <>
-      <CommandCenter
-        key={session.user.id}
-        service={service}
-        cloud
-        email={session.user.email}
-        onSignOut={signOut}
-      />
+      <GoogleProvider key={session.user.id}>
+        <CommandCenter
+          key={session.user.id}
+          service={service}
+          cloud
+          email={session.user.email}
+          onSignOut={signOut}
+        />
+      </GoogleProvider>
       {signOutError && (
         <div className="auth-error-floating" role="alert">
           {signOutError}

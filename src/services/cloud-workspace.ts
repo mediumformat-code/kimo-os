@@ -20,6 +20,9 @@ export function createVersionedWorkspaceService(
 ): WorkspaceService {
   let revision: number | undefined;
   return {
+    getRevision() {
+      return revision;
+    },
     async load() {
       const row = await store.read();
       if (!row) {

@@ -17,6 +17,9 @@ import {
   InboxItem,
 } from "@/domain/models";
 import { Avatar, Badge, Empty, SectionTitle } from "./ui";
+import { AiChat } from "./ai-chat";
+import { operatingDate } from "@/services/import-workspace";
+import { GoogleConnection } from "./google/workspace";
 import { plannedIntegrations } from "@/integrations/adapters";
 import { useState } from "react";
 type Props = {
@@ -33,6 +36,7 @@ type Props = {
   email?: string;
   onSignOut?: () => void;
   refresh: () => void;
+  googleNavigate: () => void;
 };
 export function WorkspaceViews({
   view,
@@ -48,7 +52,9 @@ export function WorkspaceViews({
   email,
   onSignOut,
   refresh,
+  googleNavigate,
 }: Props) {
+  const day = operatingDate(data);
   const [tab, setTab] = useState("Needs Kimo");
   const [query, setQuery] = useState("");
   const [showArchived, setShowArchived] = useState(false);
@@ -296,8 +302,8 @@ export function WorkspaceViews({
                 (m) =>
                   scoped(m.project) &&
                   (group === "Upcoming"
-                    ? m.date.slice(0, 10) >= "2026-10-03"
-                    : m.date.slice(0, 10) < "2026-10-03"),
+                    ? m.date.slice(0, 10) >= day
+                    : m.date.slice(0, 10) < day),
               )
               .map((m) => (
                 <button
@@ -458,7 +464,7 @@ export function WorkspaceViews({
             scoped(c.project) &&
             c.status === "Open" &&
             (overdue
-              ? c.deadline < "2026-10-03"
+              ? c.deadline < day
               : !approval && matches(c.owner + " " + c.description)),
         )
         .map((c) => ({
@@ -485,62 +491,65 @@ export function WorkspaceViews({
         })),
     ];
     return (
-      <section className="search-view">
-        <div className="search-symbol">
-          <Search size={26} />
-        </div>
-        <h2>
-          A little less searching.
-          <br />A little more clarity.
-        </h2>
-        <p>
-          Search your workspace for projects, people, commitments, and
-          decisions.
-        </p>
-        <div className="search-field">
-          <Search size={19} />
-          <input
-            autoFocus
-            placeholder="What are you looking for?"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-          <kbd>↵</kbd>
-        </div>
-        <div className="search-suggestions">
-          {[
-            "What am I waiting from Iyas?",
-            "What needs my approval?",
-            "Show all overdue commitments",
-            "What’s happening with Medium Format?",
-          ].map((q) => (
-            <button key={q} onClick={() => setQuery(q)}>
-              {q}
-              <ArrowUpRight size={14} />
-            </button>
-          ))}
-        </div>
-        <small className="search-disclaimer">
-          Local workspace search · AI answers will be added in a future
-          milestone.
-        </small>
-        {query && (
-          <div className="search-results">
-            <SectionTitle title="Workspace matches" count={results.length} />
-            {results.map((r) => (
-              <button className="panel result-row" key={r.id} onClick={r.run}>
-                <Badge>{r.kind}</Badge>
-                <strong>{r.title}</strong>
-                <p>{r.description}</p>
-                <ArrowUpRight size={16} />
+      <>
+        <AiChat cloud={cloud} />
+        <section className="search-view">
+          <div className="search-symbol">
+            <Search size={26} />
+          </div>
+          <h2>
+            A little less searching.
+            <br />A little more clarity.
+          </h2>
+          <p>
+            Search your workspace for projects, people, commitments, and
+            decisions.
+          </p>
+          <div className="search-field">
+            <Search size={19} />
+            <input
+              autoFocus
+              placeholder="What are you looking for?"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+            <kbd>↵</kbd>
+          </div>
+          <div className="search-suggestions">
+            {[
+              "What am I waiting from Iyas?",
+              "What needs my approval?",
+              "Show all overdue commitments",
+              "What’s happening with Medium Format?",
+            ].map((q) => (
+              <button key={q} onClick={() => setQuery(q)}>
+                {q}
+                <ArrowUpRight size={14} />
               </button>
             ))}
-            {!results.length && (
-              <Empty text="No matches. Try a project name, a person, or “overdue”." />
-            )}
           </div>
-        )}
-      </section>
+          <small className="search-disclaimer">
+            Local workspace search · AI answers will be added in a future
+            milestone.
+          </small>
+          {query && (
+            <div className="search-results">
+              <SectionTitle title="Workspace matches" count={results.length} />
+              {results.map((r) => (
+                <button className="panel result-row" key={r.id} onClick={r.run}>
+                  <Badge>{r.kind}</Badge>
+                  <strong>{r.title}</strong>
+                  <p>{r.description}</p>
+                  <ArrowUpRight size={16} />
+                </button>
+              ))}
+              {!results.length && (
+                <Empty text="No matches. Try a project name, a person, or “overdue”." />
+              )}
+            </div>
+          )}
+        </section>
+      </>
     );
   }
   return (
@@ -550,15 +559,18 @@ export function WorkspaceViews({
         <p>Kimo Rizky · Double Deer Group</p>
         <Badge>
           {cloud
-            ? "Cloud connected · Sample business data"
+            ? data.metadata?.dataset === "live"
+              ? "Cloud connected · Imported workspace"
+              : "Cloud connected · Sample business data"
             : "Prototype · Sample data"}
         </Badge>
         <p>
           {cloud
             ? "Changes are saved to your private cloud workspace."
             : "Changes are saved in this browser."}{" "}
-          The sample brief is anchored to 3 October 2026, with meeting times in
-          Asia/Jakarta.
+          {data.metadata?.dataset === "live"
+            ? "Dates and meeting times use Asia/Jakarta."
+            : "The sample brief is anchored to 3 October 2026, with meeting times in Asia/Jakarta."}
         </p>
       </section>
       <section className="panel detail-card">
@@ -579,25 +591,30 @@ export function WorkspaceViews({
           )}
         </div>
       </section>
+      <GoogleConnection navigate={googleNavigate} />
       <section className="panel detail-card">
-        <h2>Connections</h2>
+        <h2>Other connections</h2>
         <p>Connectors are planned. No external systems are connected yet.</p>
-        {plannedIntegrations.map((name) => (
-          <div className="connection-row" key={name}>
-            <span>{name}</span>
-            <Badge>Not connected</Badge>
-          </div>
-        ))}
+        {plannedIntegrations
+          .filter((name) => ["Plaud", "GitHub"].includes(name))
+          .map((name) => (
+            <div className="connection-row" key={name}>
+              <span>{name}</span>
+              <Badge>Not connected</Badge>
+            </div>
+          ))}
       </section>
-      <section className="panel detail-card">
-        <h2>Reset sample workspace</h2>
-        <p>
-          Restore the original sample data and replace your saved workspace.
-        </p>
-        <button className="secondary-button" onClick={reset}>
-          Reset sample data
-        </button>
-      </section>
+      {data.metadata?.dataset !== "live" && (
+        <section className="panel detail-card">
+          <h2>Reset sample workspace</h2>
+          <p>
+            Restore the original sample data and replace your saved workspace.
+          </p>
+          <button className="secondary-button" onClick={reset}>
+            Reset sample data
+          </button>
+        </section>
+      )}
     </div>
   );
 }

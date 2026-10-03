@@ -114,6 +114,12 @@ export function isWorkspace(value: unknown): value is Workspace {
         return false;
     }
   }
+  if (
+    value.metadata !== undefined &&
+    (!object(value.metadata) ||
+      !["sample", "live"].includes(value.metadata.dataset as string))
+  )
+    return false;
   const workspace = value as unknown as Workspace;
   const projectIds = new Set(workspace.projects.map((p) => p.id));
   const companyIds = new Set(workspace.companies.map((c) => c.id));

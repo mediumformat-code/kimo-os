@@ -35,6 +35,9 @@ import {
 import { Today } from "./today";
 import { WorkspaceViews } from "./workspace-views";
 import { Avatar, Badge, Modal } from "./ui";
+import { DataHub } from "./data-hub";
+import { operatingDate } from "@/services/import-workspace";
+import { GoogleWorkspace, GoogleAgenda } from "./google/workspace";
 import { DetailDialog, Detail } from "./detail-dialog";
 const nav = [
   { name: "Today", icon: Sun },
@@ -45,6 +48,8 @@ const nav = [
   { name: "Meetings", icon: CalendarDays },
   { name: "Inbox", icon: Inbox },
   { name: "Search", icon: Search },
+  { name: "Google", icon: Layers },
+  { name: "Sources", icon: Layers },
 ];
 const subtitles: Record<string, string> = {
   Today: "A clear head. A focused day.",
@@ -56,6 +61,8 @@ const subtitles: Record<string, string> = {
   Inbox: "Signal from across your business.",
   Search: "Your business, at your fingertips.",
   Settings: "Make space for how you work.",
+  Google: "Your connected calendar, inbox, and documents.",
+  Sources: "Real projects, meeting sources, and GPT proposals.",
 };
 export function CommandCenter({
   service = workspaceService,
@@ -136,7 +143,7 @@ export function CommandCenter({
     return () => clearTimeout(id);
   }, [toast]);
   const update = async (next: Workspace, message: string) => {
-    if (saveLock.current) return;
+    if (saveLock.current) return false;
     saveLock.current = true;
     setSaving(true);
     setSaveError("");
@@ -144,10 +151,12 @@ export function CommandCenter({
       await service.save(next);
       setData(next);
       setToast(message);
+      return true;
     } catch (error) {
       setSaveError(
         error instanceof Error ? error.message : "Changes could not be saved.",
       );
+      return false;
     } finally {
       saveLock.current = false;
       setSaving(false);
@@ -357,7 +366,11 @@ export function CommandCenter({
           <div className="topbar-actions">
             <span className="sample-indicator">
               <span className="status-dot" />
-              {cloud ? "Cloud · Sample business data" : "Sample workspace"}
+              {data.metadata?.dataset === "live"
+                ? "Workspace data"
+                : cloud
+                  ? "Cloud · Sample business data"
+                  : "Sample workspace"}
             </span>
             <button
               className="icon-button"
@@ -381,7 +394,9 @@ export function CommandCenter({
             <div>
               <div className="eyebrow">
                 {view === "Today"
-                  ? "SATURDAY, OCTOBER 3, 2026"
+                  ? data.metadata?.dataset === "live"
+                    ? operatingDate(data)
+                    : "SATURDAY, OCTOBER 3, 2026"
                   : "YOUR EXECUTIVE WORKSPACE"}
               </div>
               <h1>
@@ -432,14 +447,27 @@ export function CommandCenter({
                 "Preparing your workspace…"
               )}
             </div>
-          ) : view === "Today" ? (
-            <Today
+          ) : view === "Sources" ? (
+            <DataHub
               data={data}
-              company={company}
-              navigate={navigate}
-              open={open}
-              complete={complete}
+              cloud={cloud}
+              save={update}
+              refresh={refresh}
+              expectedRevision={service.getRevision}
             />
+          ) : view === "Google" ? (
+            <GoogleWorkspace />
+          ) : view === "Today" ? (
+            <>
+              <GoogleAgenda />
+              <Today
+                data={data}
+                company={company}
+                navigate={navigate}
+                open={open}
+                complete={complete}
+              />
+            </>
           ) : (
             <WorkspaceViews
               key={view}
@@ -473,6 +501,7 @@ export function CommandCenter({
               email={email}
               onSignOut={onSignOut}
               refresh={refresh}
+              googleNavigate={() => navigate("Google")}
             />
           )}
           <footer className="page-footer">
