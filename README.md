@@ -1,5 +1,7 @@
 # KIMO OS
 
+Plaud MCP incremental sync and draft review: see [Plaud integration](integrations/plaud/README.md). Sources and Meetings retain recording IDs, original timestamps and source links; HIPMI stays separate. Actions/decisions require explicit review. No Google Sheets writes are part of Plaud sync.
+
 A personal executive command center for Kimo Rizky and Double Deer Group. This V1 is a working frontend prototype with local demo mode and an optional Supabase cloud mode with realistic sample data, anchored to **3 October 2026**. Meeting times use **Asia/Jakarta (WIB)**.
 
 ## What was built

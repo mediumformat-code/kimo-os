@@ -11,7 +11,7 @@ export function ProjectCapture({
   data: Workspace;
   save: (data: Workspace, message: string) => Promise<boolean>;
 }) {
-  const [kind, setKind] = useState<"Plaud" | "GPT Projects">("Plaud");
+  const kind = "GPT Projects" as const;
   const [title, setTitle] = useState("");
   const [owner, setOwner] = useState("");
   const [projectId, setProject] = useState("");
@@ -58,19 +58,19 @@ export function ProjectCapture({
       <div className="capture-heading">
         <div>
           <span className="eyebrow">PROJECT KNOWLEDGE & MEETING CAPTURE</span>
-          <h2>Plaud + GPT Projects</h2>
+          <h2>GPT Projects — manual capture</h2>
         </div>
         <span className="badge">Import ready · account sync not connected</span>
       </div>
       <p>
-        Masukkan transkrip Plaud atau percakapan proyek dari GPT. Pilih proyek,
-        review teks dan action, lalu simpan ke Meetings dan Priorities. Data
-        Sheets tetap tersimpan.
+        Masukkan percakapan proyek dari GPT. Pilih proyek, review teks dan
+        action, lalu simpan ke Meetings dan Priorities. Data Sheets tetap
+        tersimpan.
       </p>
       <p className="capture-note">
         Private ChatGPT Projects belum bisa ditarik otomatis dari chat ini.
-        Export percakapan atau gunakan rangkuman TXT/MD. Plaud memakai export
-        transkrip; sinkronisasi akun memerlukan integrasi resmi.
+        Export percakapan atau gunakan rangkuman TXT/MD. Rekaman Plaud memakai
+        alur sync dan draft review di atas.
       </p>
       {error && (
         <div role="alert" className="access-error">
@@ -80,14 +80,7 @@ export function ProjectCapture({
       <div className="capture-grid">
         <label>
           Source
-          <select
-            value={kind}
-            onChange={(e) => {
-              setKind(e.target.value as typeof kind);
-              change();
-            }}
-          >
-            <option>Plaud</option>
+          <select value={kind} disabled>
             <option>GPT Projects</option>
           </select>
         </label>

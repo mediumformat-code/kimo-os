@@ -130,7 +130,11 @@ export function executiveWorkspace(raw: Workspace): Workspace {
     "risks",
     "inbox",
   ] as const)
-    data[key] = data[key].filter((e) => ids.has(e.project)) as never;
+    data[key] = data[key].filter(
+      (e) =>
+        ids.has(e.project) ||
+        (key === "meetings" && "plaudId" in e && e.plaudId && !e.project),
+    ) as never;
   data.people = data.people.map((p) => ({
     ...p,
     company: (() => {
@@ -174,7 +178,17 @@ export function scopeExecutive(
     "risks",
     "inbox",
   ] as const)
-    scoped[key] = data[key].filter((e) => ids.has(e.project)) as never;
+    scoped[key] = data[key].filter(
+      (e) =>
+        ids.has(e.project) ||
+        (key === "meetings" &&
+          "plaudId" in e &&
+          e.plaudId &&
+          !e.project &&
+          !node &&
+          "company" in e &&
+          e.company === company),
+    ) as never;
   scoped.people = data.people.filter((p) =>
     node
       ? p.projects.some((id) => ids.has(id))

@@ -294,16 +294,27 @@ export function WorkspaceViews({
   if (view === "Meetings")
     return (
       <div className="view-stack">
-        {["Upcoming", "Recent"].map((group) => (
+        {[
+          "Upcoming",
+          "Recent",
+          ...(!company ? ["HIPMI", "Unassigned"] : []),
+        ].map((group) => (
           <section key={group}>
             <SectionTitle title={group} />
             {data.meetings
-              .filter(
-                (m) =>
-                  scoped(m.project) &&
-                  (group === "Upcoming"
-                    ? m.date.slice(0, 10) >= day
-                    : m.date.slice(0, 10) < day),
+              .filter((m) =>
+                group === "HIPMI"
+                  ? m.scope === "hipmi"
+                  : group === "Unassigned"
+                    ? m.scope === "unassigned"
+                    : m.scope !== "hipmi" &&
+                      m.scope !== "unassigned" &&
+                      (!company ||
+                        m.company === company ||
+                        scoped(m.project)) &&
+                      (group === "Upcoming"
+                        ? m.date.slice(0, 10) >= day
+                        : m.date.slice(0, 10) < day),
               )
               .map((m) => (
                 <button
@@ -313,19 +324,27 @@ export function WorkspaceViews({
                 >
                   <div className="meeting-date">
                     <strong>
-                      {new Date(m.date).toLocaleDateString("en-GB", {
-                        timeZone: "Asia/Jakarta",
-                        day: "2-digit",
-                        month: "short",
-                      })}
+                      {m.plaudId
+                        ? m.date.slice(0, 10)
+                        : new Date(m.date).toLocaleDateString("en-GB", {
+                            timeZone: "Asia/Jakarta",
+                            day: "2-digit",
+                            month: "short",
+                          })}
                     </strong>
                     <span>
-                      {new Date(m.date).toLocaleTimeString("en-GB", {
-                        timeZone: "Asia/Jakarta",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}{" "}
-                      WIB
+                      {m.plaudId ? (
+                        `${m.date.slice(11)} ${m.sourceTimezone ?? "Zona waktu tidak tersedia"}`
+                      ) : (
+                        <>
+                          {new Date(m.date).toLocaleTimeString("en-GB", {
+                            timeZone: "Asia/Jakarta",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}{" "}
+                          WIB
+                        </>
+                      )}
                     </span>
                   </div>
                   <div className="row-body">

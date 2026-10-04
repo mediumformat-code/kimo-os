@@ -52,6 +52,11 @@ export interface Decision {
   project: string;
 }
 export interface Meeting {
+  plaudId?: string;
+  sourceUrl?: string;
+  sourceTimezone?: string;
+  company?: CompanyId;
+  scope?: "studio" | "originals" | "hipmi" | "unassigned";
   id: string;
   title: string;
   participants: string[];
@@ -96,6 +101,8 @@ export interface InboxItem {
   status: "Review" | "Delegate" | "Action" | "Decision" | "Archived";
 }
 export interface Workspace {
+  plaudSources?: import("@/services/plaud").PlaudSource[];
+  plaudSync?: import("@/services/plaud").PlaudSyncState;
   businessSync?: import("@/services/live-business").BusinessSyncState;
   sourceSheets?: import("@/services/business-import").SourceSheet[];
   sourceRecords?: import("@/services/business-import").SourceRecord[];

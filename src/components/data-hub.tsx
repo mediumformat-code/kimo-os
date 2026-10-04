@@ -1,5 +1,6 @@
 "use client";
 import { ProjectCapture } from "./sources/project-capture";
+import { PlaudSources } from "./plaud/sources";
 import { LiveBusiness } from "./google/live-business";
 import { BusinessRecords } from "./business-records";
 import { readExcelFiles } from "@/services/excel-import";
@@ -7,7 +8,7 @@ import { prepareBusinessSheets } from "@/services/business-import";
 import { BusinessSheetImport } from "./google/sheet-import";
 import { useEffect, useState } from "react";
 import { Upload, Download, ArrowUpRight } from "lucide-react";
-import { Workspace, Meeting } from "@/domain/models";
+import { Workspace } from "@/domain/models";
 import {
   prepareWorkspaceImport,
   downloadWorkspace,
@@ -62,13 +63,6 @@ export function DataHub({
   const [backedUp, setBackedUp] = useState(false);
   const [busy, setBusy] = useState(false);
   const [clear, setClear] = useState(false);
-  const [plaud, setPlaud] = useState("");
-  const [meetingTitle, setMeetingTitle] = useState("");
-  const [project, setProject] = useState("");
-  const [meetingDate, setMeetingDate] = useState(
-    new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().slice(0, 16),
-  );
-  const [participants, setParticipants] = useState("");
   const [key, setKey] = useState("");
   const [keyNotice, setKeyNotice] = useState("");
   const [keyConfirm, setKeyConfirm] = useState(false);
@@ -86,10 +80,7 @@ export function DataHub({
       active = false;
     };
   }, [cloud]);
-  async function file(
-    event: React.ChangeEvent<HTMLInputElement>,
-    kind: "projects" | "plaud",
-  ) {
+  async function file(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
     if (file.size > 1000000) {
@@ -98,13 +89,8 @@ export function DataHub({
     }
     try {
       const content = await file.text();
-      if (kind === "projects") {
-        setText(content);
-        setSource(file.name);
-      } else {
-        setPlaud(content);
-        setMeetingTitle(file.name.replace(/\.[^.]+$/, ""));
-      }
+      setText(content);
+      setSource(file.name);
       setError("");
     } catch {
       setError("File tidak bisa dibaca.");
@@ -127,48 +113,6 @@ export function DataHub({
     if (ok) {
       setPrepared(undefined);
       setText("");
-    }
-    setBusy(false);
-  }
-  async function importMeeting() {
-    const linked = data.projects.find((p) => p.id === project);
-    if (!linked || !meetingTitle.trim() || !plaud.trim() || !meetingDate) {
-      setError("Isi judul, tanggal, proyek, dan ringkasan meeting.");
-      return;
-    }
-    setBusy(true);
-    const meeting: Meeting = {
-      id: crypto.randomUUID(),
-      title: meetingTitle.trim(),
-      participants: participants
-        .split(",")
-        .map((p) => p.trim())
-        .filter(Boolean),
-      date: meetingDate + ":00+07:00",
-      source: "Plaud import",
-      summary: plaud.trim(),
-      decisions: [],
-      commitments: [],
-      actions: [],
-      risks: [],
-      followUps: [],
-      project: linked.id,
-    };
-    const ok = await save(
-      {
-        ...data,
-        meetings: [...data.meetings, meeting],
-        projects: data.projects.map((p) =>
-          p.id === linked.id
-            ? { ...p, meetings: [...p.meetings, meeting.id] }
-            : p,
-        ),
-      },
-      "Ringkasan Plaud tersimpan",
-    );
-    if (ok) {
-      setPlaud("");
-      setMeetingTitle("");
     }
     setBusy(false);
   }
@@ -227,6 +171,7 @@ export function DataHub({
         expectedRevision={expectedRevision}
         save={save}
       />
+      <PlaudSources data={data} cloud={cloud} save={save} refresh={refresh} />
       <ProjectCapture data={data} save={save} />
       <BusinessRecords data={data} />
       {!data.businessSync?.enabled && (
@@ -292,7 +237,7 @@ export function DataHub({
                 <input
                   type="file"
                   accept=".json,.txt"
-                  onChange={(e) => file(e, "projects")}
+                  onChange={(e) => file(e)}
                 />
               </label>
             </div>
@@ -340,76 +285,6 @@ export function DataHub({
           </section>
         </details>
       )}
-      <section className="panel detail-card">
-        <h2>Plaud meeting intelligence</h2>
-        <p>
-          Upload atau tempel ringkasan Plaud. Impor menyimpan sumber meeting
-          secara utuh; keputusan/komitmen belum diekstrak otomatis. Sinkronisasi
-          akun Plaud otomatis belum terhubung.
-        </p>
-        <label className="secondary-button upload-label">
-          <Upload size={14} />
-          Upload Plaud text
-          <input
-            type="file"
-            accept=".txt,.md"
-            onChange={(e) => file(e, "plaud")}
-          />
-        </label>
-        <div className="import-fields">
-          <label className="field-label">
-            Meeting title
-            <input
-              value={meetingTitle}
-              onChange={(e) => setMeetingTitle(e.target.value)}
-            />
-          </label>
-          <label className="field-label">
-            Date & time (WIB)
-            <input
-              type="datetime-local"
-              value={meetingDate}
-              onChange={(e) => setMeetingDate(e.target.value)}
-            />
-          </label>
-          <label className="field-label">
-            Project
-            <select
-              value={project}
-              onChange={(e) => setProject(e.target.value)}
-            >
-              <option value="">Choose project</option>
-              {data.projects.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="field-label">
-            Participants (comma separated)
-            <input
-              value={participants}
-              onChange={(e) => setParticipants(e.target.value)}
-            />
-          </label>
-        </div>
-        <label className="field-label">
-          Summary
-          <textarea
-            value={plaud}
-            onChange={(e) => setPlaud(e.target.value)}
-            maxLength={1000000}
-          />
-        </label>
-        <button
-          className="primary-button"
-          onClick={importMeeting}
-          disabled={busy || !plaud.trim()}
-        >
-          Save meeting summary
-        </button>
-      </section>
       <section className="panel detail-card">
         <h2>GPT ↔ KIMO OS</h2>
         <p>
