@@ -4,7 +4,7 @@ export async function GET(request: Request) {
     openapi: "3.1.0",
     info: {
       title: "KIMO OS",
-      version: "1.0.0",
+      version: "1.1.0",
       description:
         "Read private workspace data and submit proposed replacement snapshots for explicit owner review. Never applies edits automatically.",
     },
@@ -18,7 +18,50 @@ export async function GET(request: Request) {
       "/api/gpt/workspace": {
         get: {
           operationId: "getKimoWorkspace",
-          summary: "Read the current workspace and revision",
+          summary:
+            "Read compact overview or paginated records. Use section + id for complete record chunks. Never propose replacement from partial data.",
+          parameters: [
+            {
+              name: "section",
+              in: "query",
+              schema: {
+                type: "string",
+                enum: [
+                  "overview",
+                  "projects",
+                  "people",
+                  "actions",
+                  "decisions",
+                  "commitments",
+                  "meetings",
+                  "risks",
+                  "inbox",
+                  "sourceRecords",
+                  "sourceSheets",
+                ],
+                default: "overview",
+              },
+            },
+            {
+              name: "offset",
+              in: "query",
+              description:
+                "List row offset, or character offset when reading a record by id. Follow nextOffset until null.",
+              schema: { type: "integer", minimum: 0, default: 0 },
+            },
+            {
+              name: "limit",
+              in: "query",
+              schema: { type: "integer", minimum: 1, maximum: 10, default: 5 },
+            },
+            {
+              name: "id",
+              in: "query",
+              description:
+                "Read a complete record serialized as JSON in 4000-character chunks; concatenate chunks in order and parse JSON.",
+              schema: { type: "string" },
+            },
+          ],
           responses: {
             "200": {
               description: "Workspace snapshot",
