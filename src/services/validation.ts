@@ -1,4 +1,5 @@
 import type { Workspace } from "@/domain/models";
+import { parsePlaudRecording } from "./plaud";
 // Reject malformed browser/remote snapshots before rendering. Unknown properties
 // are permitted so optional fields can be introduced without breaking old clients.
 const fields = {
@@ -83,6 +84,44 @@ const object = (value: unknown): value is Record<string, unknown> =>
   !!value && typeof value === "object" && !Array.isArray(value);
 export function isWorkspace(value: unknown): value is Workspace {
   if (!object(value)) return false;
+  if (value.plaudSources !== undefined) {
+    if (!Array.isArray(value.plaudSources)) return false;
+    const ids = new Set<string>();
+    for (const source of value.plaudSources) {
+      try {
+        const parsed = parsePlaudRecording(source);
+        if (
+          !object(source) ||
+          parsed.scope !== source.scope ||
+          ids.has(parsed.id) ||
+          typeof source.syncedAt !== "string" ||
+          !Number.isFinite(Date.parse(source.syncedAt)) ||
+          !Array.isArray(source.drafts) ||
+          !source.drafts.every(
+            (d) =>
+              object(d) &&
+              typeof d.id === "string" &&
+              ["Review", "Applied", "Rejected"].includes(d.status as string),
+          )
+        )
+          return false;
+        ids.add(parsed.id);
+      } catch {
+        return false;
+      }
+    }
+  }
+  if (value.plaudSync !== undefined) {
+    const s = value.plaudSync;
+    if (
+      !object(s) ||
+      typeof s.lastAttemptAt !== "string" ||
+      !Number.isInteger(s.attempts) ||
+      !["success", "failed"].includes(s.status as string) ||
+      s.automatic !== false
+    )
+      return false;
+  }
   for (const [key, required] of Object.entries(fields)) {
     const items = value[key];
     if (!Array.isArray(items)) return false;
@@ -193,7 +232,16 @@ export function isWorkspace(value: unknown): value is Workspace {
       ...workspace.commitments,
       ...workspace.risks,
       ...workspace.inbox,
-      ...workspace.meetings,
+      ...workspace.meetings.filter(
+        (m) =>
+          !(
+            m.project === "" &&
+            m.plaudId &&
+            workspace.plaudSources?.some(
+              (s) => s.id === m.plaudId && s.scope === m.scope,
+            )
+          ),
+      ),
     ].some((i) => !projectIds.has(i.project))
   )
     return false;

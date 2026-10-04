@@ -117,10 +117,28 @@ export function DetailDialog({
                     <Badge>{m.source}</Badge>
                     <p>{m.summary}</p>
                     <div className="detail-meta">
-                      {new Date(m.date).toLocaleString("en-GB", {
-                        timeZone: "Asia/Jakarta",
-                      })}{" "}
-                      WIB
+                      {m.plaudId ? (
+                        `${m.date} · ${m.sourceTimezone ?? "Zona waktu sumber tidak tersedia"}`
+                      ) : (
+                        <>
+                          {new Date(m.date).toLocaleString("en-GB", {
+                            timeZone: "Asia/Jakarta",
+                          })}{" "}
+                          WIB
+                        </>
+                      )}
+                      {m.sourceUrl && (
+                        <p>
+                          <a
+                            href={m.sourceUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            Buka sumber Plaud
+                          </a>{" "}
+                          · ID: {m.plaudId}
+                        </p>
+                      )}
                       <br />
                       {m.participants.join(", ")}
                     </div>
